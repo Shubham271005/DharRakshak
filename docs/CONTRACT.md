@@ -22,9 +22,21 @@ This page is for the frontend teammates. The real definitions are in `shared/con
 
 ## How screens get data
 
-Never open `sample_data.json` directly. Call the functions in `frontend/api_client.py`: `get_crop_profile`, `save_crop_profile`, `analyze_image`, `get_latest_analysis`, `get_loan_summary`, `send_chat`. They read the sample file today and the real backend later.
+Never open `sample_data.json` or call `fetch()` directly. Use the functions in `frontend/src/api/client.js`: `getCropProfile`, `saveCropProfile`, `analyzeImage`, `getLatestAnalysis`, `getLoanSummary`, `sendChat`. They read the sample file in mock mode and the real backend in api mode.
+
+The easiest way to load data in a screen:
+
+```jsx
+const { data, loading, error, reload } = useApiData(() => getLoanSummary(cropId), [cropId])
+```
+
+Text helpers from `useLanguage()`:
+- `t('key')` returns a UI label from `src/i18n/uiText.js`.
+- `tr(obj)` picks the right language from backend text like `{en, hi}`.
 
 ## Colours (everyone uses these)
+
+In React, use the Tailwind class names (`bg-forest`, `text-rust`, `bg-tint`, `bg-gold/20`, …), defined in `frontend/src/index.css`.
 
 | Use | Hex |
 |---|---|

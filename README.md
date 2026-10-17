@@ -10,7 +10,7 @@ DharRakshak is an AI crop assistant. It turns a leaf photo, the farmer's crop pr
 
 - **Backend:** Python 3.11+, FastAPI, SQLite
 - **AI:** pretrained plant-disease image classifier (PlantVillage-trained), rules-based risk and action engines, an LLM API for the chatbot
-- **Frontend:** Streamlit
+- **Frontend:** React 19 + Vite + Tailwind CSS v4
 - **Data:** Open-Meteo weather (with mock fallback). Loan data is **mock only**, with no bank integration.
 
 ## Quick start (so far)
@@ -21,11 +21,17 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python scripts/check_sample_data.py
 
-# Run the app (mock mode, no backend needed)
-streamlit run frontend/app.py
+# Backend (terminal 1) — API docs at http://localhost:8000/docs
+uvicorn backend.main:app --reload --port 8000
+pytest                              # run the backend tests
+
+# Frontend (terminal 2) — opens at http://localhost:5173
+cd frontend
+npm install                         # first time only (needs Node.js 20+)
+npm run dev
 ```
 
-The app opens at http://localhost:8501.
+The frontend starts in **mock mode** (sample data, no backend needed). To use the real backend, create `frontend/.env` containing `VITE_API_MODE=api` and restart `npm run dev`.
 
 ## For teammates
 

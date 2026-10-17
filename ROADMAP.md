@@ -25,11 +25,18 @@ Dynaminds-IIITD/
 │   ├── engines/                ← risk.py, actions.py, explain.py     (C6)
 │   ├── services/loans.py       ← mock loans + document checker       (C7)
 │   └── services/chat.py        ← grounded LLM chatbot                (C9)
-├── frontend/
-│   ├── app.py                  ← Streamlit entry point + navigation  (C1)
-│   ├── api_client.py           ← talks to backend OR reads mock data (C1)
-│   ├── theme.py                ← shared colours / helpers            (C1)
-│   └── screens/                ← one file per teammate               (C1 stubs → teammates)
+├── frontend/                   ← React + Vite + Tailwind CSS v4
+│   ├── package.json, vite.config.js, index.html, .env.example
+│   └── src/
+│       ├── App.jsx             ← app shell: sidebar + current screen  (C1)
+│       ├── index.css           ← Tailwind + theme colours             (C1)
+│       ├── api/client.js       ← mock OR backend data, one function per call (C1)
+│       ├── api/useApiData.js   ← loading/error hook for screens       (C1)
+│       ├── i18n/               ← language context + UI labels         (C1, C8)
+│       ├── components/         ← Sidebar, Card, Pill, MockTag, …      (C1)
+│       ├── lib/                ← formatting, crop/stage labels        (C1)
+│       └── screens/            ← one file per teammate                (C1 stubs → teammates)
+├── tests/test_api.py           ← backend API tests                    (C2)
 ├── scripts/                    ← checks and helper scripts
 └── data/samples/               ← sample leaf photos for the demo     (C4)
 ```
@@ -56,45 +63,67 @@ python scripts/check_sample_data.py      # must print "OK"
 
 ---
 
-## ✅ Component 1 — Frontend shell + teammate screen stubs
+## ✅ Component 1 — Frontend shell + teammate screen stubs (React + Tailwind)
 
 **Goal:** unblock the 4 teammates as early as possible. They need a running app with an empty screen each.
 
-**Files to create:**
-- `frontend/app.py`: Streamlit entry point. Page config, sidebar navigation between the 4 screens, and the language selector state.
-- `frontend/api_client.py`: one function per backend call (`get_crop_profile`, `analyze_image`, `get_loan_summary`, `send_chat`). Has a **mock mode** that reads `shared/sample_data.json`, so screens work with no backend.
-- `frontend/theme.py`: colour constants plus small helpers (format rupees, pick language text, render a "MOCK DATA" tag).
-- `frontend/screens/profile.py` (Teammate 1), `analysis.py` (Teammate 2), `finance.py` (Teammate 3), `chat.py` (Teammate 4). Each is a **stub** with TODO comments describing exactly what to build.
-- `.streamlit/config.toml`: green theme.
-- `requirements.txt`: add `streamlit`, `requests`.
+*(First built in Streamlit, then rebuilt in React + Tailwind at the team's request. The Streamlit version is in git history, commit `f692de9`.)*
+
+**Files created (in `frontend/`):**
+- `package.json`, `vite.config.js`, `index.html`: Vite + React 19 + Tailwind CSS v4. Vite forwards `/api/*` to the backend on port 8000.
+- `src/index.css`: theme colours as Tailwind classes (`bg-forest`, `text-rust`, `bg-tint`, …) and system fonts that handle Hindi.
+- `src/App.jsx`: sidebar plus the current screen. Each screen is wrapped in an error boundary so one broken screen can't crash the app. The screen is kept in the URL (`#finance`).
+- `src/api/client.js`: the only place data comes from: `getCropProfile`, `saveCropProfile`, `analyzeImage`, `getLatestAnalysis`, `getLoanSummary`, `sendChat`, `getHealth`. It has **mock mode** (reads `shared/sample_data.json`) and **api mode** (calls the backend), set by `VITE_API_MODE`.
+- `src/api/useApiData.js`: a hook that gives screens `data`, `loading`, `error` and `reload`.
+- `src/api/types.js`: JSDoc types mirroring the contract, for editor autocomplete.
+- `src/i18n/`: `LanguageContext.jsx` (`t()` for UI labels, `tr()` for backend text, remembered choice, `?lang=hi` links) and `uiText.js` (EN + HI labels).
+- `src/components/`: `Sidebar`, `ErrorBoundary`, and `ui.jsx` (Card, Pill, MockTag, ScreenHeader, Loading, ErrorBox, StubBanner, RawData).
+- `src/lib/`: `format.js` (₹ with Indian grouping, %, dates in EN/HI), `labels.js` (crop and stage names), `useSessionState.js`.
+- `src/screens/ProfileScreen.jsx` (Teammate 1), `AnalysisScreen.jsx` (Teammate 2), `FinanceScreen.jsx` (Teammate 3), `ChatScreen.jsx` (Teammate 4). Each is a working stub with numbered TODOs and a "done when" checklist.
 
 **Also added:** `CropProfileCreate` in `shared/contract.py`, the model for what the farmer types into the registration form (it rejects future sowing dates).
 
-**Verify:** `streamlit run frontend/app.py` opens, you can switch between 4 placeholder screens, and the language selector works.
-Mock mode is the default. `DHARRAKSHAK_MODE=api` switches to the backend once Component 2 exists.
+**Verify:**
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173 (mock mode, no backend needed)
+```
+You can switch between 4 screens, the language switcher changes every label, and the phone-width layout shows top tabs.
 
-**Hand-off:** each teammate gets their stub file and `docs/CONTRACT.md`.
+**Hand-off:** each teammate gets their screen file and `docs/CONTRACT.md`.
 
 ---
 
-## 🔜 Component 2 — Backend skeleton (FastAPI)
+## ✅ Component 2 — Backend skeleton (FastAPI)
 
 **Goal:** a running API that returns the sample data from every endpoint, so the frontend can switch from mock mode to "real server" mode early.
 
-**Files to create:**
-- `backend/__init__.py`, `backend/main.py`: FastAPI app, CORS, `/health`, and stub routes that return validated sample data:
-  - `POST /crops` and `GET /crops/{crop_id}` (F2)
-  - `POST /crops/{crop_id}/analyze` (photo upload; F1, F3, F2, F4)
-  - `GET /crops/{crop_id}/history`
-  - `GET /crops/{crop_id}/loan` (F5)
-  - `POST /chat` (F7)
-- `requirements.txt`: add `fastapi`, `uvicorn[standard]`, `python-multipart`.
+**Files created:**
+- `backend/main.py`: FastAPI app, CORS for the React dev server, and all routes under `/api`. Every response is checked against `shared/contract.py`:
+  - `GET /api/health`
+  - `POST /api/crops` and `GET /api/crops/{crop_id}` (F2)
+  - `POST /api/crops/{crop_id}/analyze`: photo upload with real checks (JPEG/PNG/WebP only, not empty, max 8 MB). It returns the sample result for now (F1, F3, F2, F4).
+  - `GET /api/crops/{crop_id}/history`, newest first
+  - `GET /api/crops/{crop_id}/loan`, always `data_source: "mock"` (F5)
+  - `POST /api/chat`, keyword-matched sample answers, pesticide questions checked first (F7)
+  - Unknown crops return 404. Bad input returns 422.
+- `backend/sample_store.py`: in-memory storage seeded from the sample file. Later components replace it piece by piece.
+- `tests/test_api.py` + `pytest.ini`: 14 tests covering happy paths and error cases.
+- `requirements.txt`: `fastapi`, `uvicorn[standard]`, `python-multipart`, `pytest`, `httpx` (Streamlit removed).
 
-**Verify:** `uvicorn backend.main:app --reload`, open `http://localhost:8000/docs`, and every endpoint returns the sample payload. Then set the frontend to real-server mode and the screens look identical.
+**Verify:**
+```bash
+uvicorn backend.main:app --reload --port 8000    # then open http://localhost:8000/docs
+pytest                                           # 14 passed
+# React app against the real backend (second terminal):
+cd frontend && echo "VITE_API_MODE=api" > .env && npm run dev
+```
+The sidebar shows **Connected to server** and every screen loads its data from the backend.
 
 ---
 
-## ⬜ Component 3 — Database (SQLite) + real crop profiles
+## 🔜 Component 3 — Database (SQLite) + real crop profiles
 
 **Goal:** crop profiles and analyses are saved and loaded for real.
 
@@ -158,7 +187,7 @@ Mock mode is the default. `DHARRAKSHAK_MODE=api` switches to the backend once Co
 
 **Goal:** the whole interface switches between English and Hindi.
 
-**Files:** `shared/i18n/en.json` and `hi.json` (every UI label, keyed by id), a `t(key, lang)` helper in `frontend/theme.py`, and a language-coverage check script.
+**Files:** `shared/i18n/en.json` and `hi.json` (every UI label, keyed by id), the `t()` helper in `frontend/src/i18n/LanguageContext.jsx` reading them, and a language-coverage check script.
 
 **Verify:** switching to हिंदी changes all labels, cards, alerts and finance text. The coverage script reports no missing keys. Add a regional language only if its file is complete.
 
@@ -191,10 +220,10 @@ Mock mode is the default. `DHARRAKSHAK_MODE=api` switches to the backend once Co
 
 | Teammate | Screen file | Builds | Data |
 |---|---|---|---|
-| 1 | `frontend/screens/profile.py` | Crop registration form + profile card | `crop_profile` |
-| 2 | `frontend/screens/analysis.py` | Prediction bars, risk badge, action cards, "Why?" box | `analysis` |
-| 3 | `frontend/screens/finance.py` | Loan card, documents checklist (missing in red), schemes, MOCK tag | `loan_summary` |
-| 4 | `frontend/screens/chat.py` + theme polish | Chat bubbles, input box, language selector, consistent styling | `chat_examples` |
+| 1 | `frontend/src/screens/ProfileScreen.jsx` | Crop registration form + profile card | `crop_profile` |
+| 2 | `frontend/src/screens/AnalysisScreen.jsx` | Prediction bars, risk badge, action cards, "Why?" box | `analysis` |
+| 3 | `frontend/src/screens/FinanceScreen.jsx` | Loan card, documents checklist (missing in red), schemes, MOCK tag | `loan_summary` |
+| 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Chat bubbles, input box, language selector, consistent styling | `chat_examples` |
 
 Everyone builds against mock mode first. In Component 10 we flip the switch to the real backend.
 

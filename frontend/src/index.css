@@ -1,0 +1,31 @@
+/*
+ * Global styles + design tokens (Tailwind CSS v4).
+ *
+ * Each `--color-*` below becomes a Tailwind colour, so you can write
+ * classes like `bg-forest`, `text-rust`, `border-tint`, `bg-gold/20`.
+ * Use THESE names in every screen instead of hex codes or Tailwind's
+ * default palette, so the whole app matches the pitch deck.
+ */
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #1F3D2B;    /* headers, sidebar */
+  --color-moss: #2E6B3F;      /* buttons, main bars, "active" */
+  --color-leaf: #7FA65A;      /* secondary bars, "low" risk */
+  --color-gold: #C9A227;      /* highlights, MOCK tags, "moderate" risk */
+  --color-rust: #B5502F;      /* "elevated" risk, missing documents */
+  --color-cream: #F7F5EF;     /* page background */
+  --color-tint: #E8EFE0;      /* soft card backgrounds */
+  --color-goldtint: #FBF3DC;  /* soft highlight background */
+  --color-ink: #1B2A20;       /* body text */
+  --color-muted: #5E6B60;     /* secondary text */
+
+  /* System fonts only (works offline at the venue). Devanagari fonts are
+     listed so Hindi renders well on Windows, macOS, Linux and Android. */
+  --font-sans: system-ui, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari",
+    "Nirmala UI", "Kohinoor Devanagari", Arial, sans-serif;
+}
+
+body {
+  @apply bg-cream text-ink antialiased;
+}

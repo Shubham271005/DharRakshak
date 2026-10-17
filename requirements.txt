@@ -5,6 +5,11 @@
 # Component 0 — data contract
 pydantic>=2.7,<3
 
-# Component 1 — frontend shell
-streamlit>=1.38
-requests>=2.31
+# Component 2 — backend skeleton
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9   # needed for photo uploads
+
+# Testing
+pytest>=8
+httpx>=0.27               # used by FastAPI's TestClient
