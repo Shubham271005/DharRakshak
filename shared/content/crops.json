@@ -1,0 +1,26 @@
+{
+  "_about": "Display names for crops and growth stages (EN/HI), used by the backend engines. Crop keys match labels.json; stage keys match CropStage in shared/contract.py. frontend/src/lib/labels.js holds the same names for the UI (Component 8 merges them into one source).",
+  "crops": {
+    "tomato": { "en": "tomato", "hi": "टमाटर" },
+    "potato": { "en": "potato", "hi": "आलू" },
+    "corn": { "en": "maize", "hi": "मक्का" },
+    "pepper_bell": { "en": "bell pepper", "hi": "शिमला मिर्च" },
+    "soybean": { "en": "soybean", "hi": "सोयाबीन" },
+    "grape": { "en": "grape", "hi": "अंगूर" },
+    "apple": { "en": "apple", "hi": "सेब" },
+    "orange": { "en": "orange", "hi": "संतरा" },
+    "peach": { "en": "peach", "hi": "आड़ू" },
+    "cherry": { "en": "cherry", "hi": "चेरी" },
+    "strawberry": { "en": "strawberry", "hi": "स्ट्रॉबेरी" },
+    "squash": { "en": "squash", "hi": "स्क्वैश" },
+    "blueberry": { "en": "blueberry", "hi": "ब्लूबेरी" },
+    "raspberry": { "en": "raspberry", "hi": "रास्पबेरी" }
+  },
+  "stages": {
+    "seedling": { "en": "seedling", "hi": "पौध" },
+    "vegetative": { "en": "vegetative growth", "hi": "बढ़वार" },
+    "flowering": { "en": "flowering", "hi": "फूल आने की" },
+    "fruiting": { "en": "fruiting", "hi": "फल लगने की" },
+    "maturity": { "en": "maturity", "hi": "पकने की" }
+  }
+}

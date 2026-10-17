@@ -1,0 +1,105 @@
+{
+  "_about": "Risk rules for backend/engines/risk.py (F3). Each rule adds `points` and a reason sentence (EN/HI) when its condition is true. Placeholders in {braces} are filled from the analysis. These are transparent HEURISTICS chosen by the team for the hackathon MVP — they are not validated agronomy and should be reviewed by an agricultural expert. The result is always presented as an estimate.",
+
+  "thresholds": {
+    "high_confidence": 0.80,
+    "wet_recent_rain_mm": 10,
+    "wet_recent_humidity_pct": 80,
+    "rain_forecast_mm": 5,
+    "rain_forecast_chance_pct": 60,
+    "hot_dry_temp_c": 28,
+    "hot_dry_humidity_pct": 60,
+    "sensitive_stages": ["flowering", "fruiting"]
+  },
+
+  "levels": {
+    "_about": "Total score → level. score >= elevated → elevated; >= moderate → moderate; else low.",
+    "moderate": 3,
+    "elevated": 5,
+    "names": {
+      "low": { "en": "low", "hi": "कम" },
+      "moderate": { "en": "moderate", "hi": "मध्यम" },
+      "elevated": { "en": "elevated", "hi": "ऊँची" }
+    }
+  },
+
+  "rules": {
+    "disease_high_confidence": {
+      "points": 3,
+      "text": {
+        "en": "The photo shows signs that closely match {disease} ({conf} model confidence).",
+        "hi": "तस्वीर के लक्षण इस समस्या से काफ़ी मिलते-जुलते हैं: {disease} (मॉडल का भरोसा {conf})।"
+      }
+    },
+    "disease_possible": {
+      "points": 2,
+      "text": {
+        "en": "The photo shows signs that may match {disease} ({conf} model confidence).",
+        "hi": "तस्वीर के लक्षण इस समस्या से मिलते-जुलते हो सकते हैं: {disease} (मॉडल का भरोसा {conf})।"
+      }
+    },
+    "unclear_photo": {
+      "points": 1,
+      "text": {
+        "en": "The photo is unclear, so the leaf could not be checked reliably.",
+        "hi": "तस्वीर साफ़ नहीं है, इसलिए पत्ती की भरोसेमंद जाँच नहीं हो सकी।"
+      }
+    },
+    "looks_healthy": {
+      "points": 0,
+      "text": {
+        "en": "The leaf looks healthy in this photo ({conf} model confidence).",
+        "hi": "इस तस्वीर में पत्ती स्वस्थ दिख रही है (मॉडल का भरोसा {conf})।"
+      }
+    },
+    "wet_recent_disease": {
+      "points": 2,
+      "text": {
+        "en": "Wet weather recently ({rain} mm rain, {humidity}% humidity in the last 3 days) can help {disease} spread.",
+        "hi": "हाल का नम मौसम (पिछले 3 दिनों में {rain} मिमी बारिश, {humidity}% नमी) इस समस्या ({disease}) को फैलने में मदद कर सकता है।"
+      }
+    },
+    "rain_forecast_disease": {
+      "points": 1,
+      "text": {
+        "en": "More rain is expected in the next 3 days (about {rain_next} mm, up to {chance}% chance).",
+        "hi": "अगले 3 दिनों में और बारिश की संभावना है (लगभग {rain_next} मिमी, अधिकतम {chance}% संभावना)।"
+      }
+    },
+    "hot_dry_pest": {
+      "points": 2,
+      "text": {
+        "en": "Hot, dry weather ({temp}°C, {humidity}% humidity) favours spider mites.",
+        "hi": "गर्म और सूखा मौसम ({temp}°C, {humidity}% नमी) मकड़ी माइट को बढ़ावा देता है।"
+      }
+    },
+    "wet_recent_healthy": {
+      "points": 1,
+      "text": {
+        "en": "Recent wet weather ({rain} mm rain, {humidity}% humidity) can favour leaf diseases, so keep watching.",
+        "hi": "हाल का नम मौसम ({rain} मिमी बारिश, {humidity}% नमी) पत्ती के रोगों को बढ़ावा दे सकता है, इसलिए नज़र रखें।"
+      }
+    },
+    "sensitive_stage": {
+      "points": 1,
+      "text": {
+        "en": "The crop is at the {stage} stage, when problems can affect the harvest more.",
+        "hi": "फसल {stage} अवस्था में है, जब समस्याएँ उपज पर ज़्यादा असर डाल सकती हैं।"
+      }
+    },
+    "crop_mismatch": {
+      "points": 0,
+      "text": {
+        "en": "The photo looks like a different crop than the one in your profile.",
+        "hi": "तस्वीर आपकी प्रोफ़ाइल वाली फसल से अलग फसल की लग रही है।"
+      }
+    },
+    "weather_unavailable": {
+      "points": 0,
+      "text": {
+        "en": "Weather data was unavailable, so this estimate is based on the photo and crop stage only.",
+        "hi": "मौसम की जानकारी उपलब्ध नहीं थी, इसलिए यह अनुमान केवल तस्वीर और फसल की अवस्था पर आधारित है।"
+      }
+    }
+  }
+}

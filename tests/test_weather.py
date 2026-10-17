@@ -37,6 +37,16 @@ def test_summary_says_little_rain_when_dry_ahead():
     assert "little or no rain expected" in weather.parse_weather(dry).summary.en
 
 
+def test_summary_light_rain_possible_when_chance_but_little_rain():
+    showery = copy.deepcopy(OPEN_METEO_DAILY)
+    showery["daily"]["precipitation_sum"][4:] = [0.2, 0.0, 0.3]
+    showery["daily"]["precipitation_probability_max"][4:] = [39, 20, 10]
+    summary = weather.parse_weather(showery).summary
+    assert "light rain possible (up to 39% chance)" in summary.en
+    assert "about 0 mm" not in summary.en
+    assert "हल्की बारिश संभव" in summary.hi
+
+
 def test_missing_values_are_skipped_not_treated_as_zero():
     gappy = copy.deepcopy(OPEN_METEO_DAILY)
     gappy["daily"]["relative_humidity_2m_mean"][0] = None

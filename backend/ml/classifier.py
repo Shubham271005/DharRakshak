@@ -127,6 +127,7 @@ class ClassInfo:
     label: str          # raw class name, e.g. "Tomato___Early_blight"
     crop: str           # crop key, e.g. "tomato"
     healthy: bool
+    disease_type: str   # fungal | bacterial | viral | insect_spread | pest | healthy
     name: LocalizedText  # plain name, e.g. {"en": "tomato early blight", ...}
 
 
@@ -136,7 +137,8 @@ def load_labels() -> tuple[ClassInfo, ...]:
     if len(raw) != NUM_CLASSES:
         raise ValueError(f"labels.json has {len(raw)} classes, expected {NUM_CLASSES}")
     return tuple(
-        ClassInfo(label=c["label"], crop=c["crop"], healthy=c["healthy"], name=LocalizedText(**c["name"]))
+        ClassInfo(label=c["label"], crop=c["crop"], healthy=c["healthy"],
+                  disease_type=c["type"], name=LocalizedText(**c["name"]))
         for c in raw
     )
 

@@ -1,0 +1,171 @@
+{
+  "_about": "Action-card templates for backend/engines/actions.py (F2). `when` documents the condition (the code in actions.py is the source of truth). Eligible cards are sorted by `weight` (higher first) and the top 3 are shown. SAFETY: cards only suggest checking, verifying, monitoring and basic field hygiene — never pesticide names, products or doses (tests/test_engines.py scans this file for banned words).",
+  "max_cards": 3,
+
+  "cards": {
+    "retake_photo": {
+      "when": "photo is unclear (uncertain)",
+      "weight": 100,
+      "title": { "en": "Retake the photo", "hi": "फोटो दोबारा लें" },
+      "detail": {
+        "en": "Take a clear, close photo of one affected leaf in daylight.",
+        "hi": "दिन की रोशनी में एक प्रभावित पत्ती की साफ़, नज़दीक से फोटो लें।"
+      },
+      "why": {
+        "en": "The current photo was not clear enough for a reliable check.",
+        "hi": "मौजूदा फोटो भरोसेमंद जाँच के लिए पर्याप्त साफ़ नहीं थी।"
+      }
+    },
+    "check_crop": {
+      "when": "model's crop differs from the profile's crop",
+      "weight": 95,
+      "title": { "en": "Check the crop in the photo", "hi": "फोटो में फसल जाँचें" },
+      "detail": {
+        "en": "Make sure the photo is of your {crop} plant, or update your crop profile.",
+        "hi": "पक्का करें कि फोटो आपके {crop} के पौधे की है, या अपनी फसल प्रोफ़ाइल अपडेट करें।"
+      },
+      "why": {
+        "en": "The photo looks like a different crop, so the result may not apply to your field.",
+        "hi": "फोटो किसी दूसरी फसल की लग रही है, इसलिए परिणाम आपके खेत पर लागू नहीं भी हो सकता।"
+      }
+    },
+    "inspect_nearby": {
+      "when": "a disease or pest is detected",
+      "weight": 90,
+      "title": { "en": "Inspect nearby plants", "hi": "आस-पास के पौधे जाँचें" },
+      "detail": {
+        "en": "Check neighbouring plants today for similar signs.",
+        "hi": "आज ही आस-पास के पौधों में ऐसे ही लक्षण देखें।"
+      },
+      "why": {
+        "en": "Finding out how many plants show signs of {disease} tells you how serious it is.",
+        "hi": "कितने पौधों में यही लक्षण ({disease}) हैं, यह जानने से पता चलता है कि समस्या कितनी गंभीर है।"
+      }
+    },
+    "check_undersides": {
+      "when": "pest (spider mites) detected",
+      "weight": 88,
+      "title": { "en": "Look under the leaves", "hi": "पत्तियों के नीचे देखें" },
+      "detail": {
+        "en": "Check the undersides of leaves for tiny moving dots or fine webbing.",
+        "hi": "पत्तियों के निचले हिस्से में छोटे चलते बिंदु या बारीक जाला देखें।"
+      },
+      "why": {
+        "en": "Spider mites live under leaves; seeing them confirms the problem before you act.",
+        "hi": "मकड़ी माइट पत्तियों के नीचे रहते हैं; उन्हें देखकर कोई कदम उठाने से पहले समस्या की पुष्टि होती है।"
+      }
+    },
+    "check_insects": {
+      "when": "insect-spread disease detected (whitefly / psyllid)",
+      "weight": 88,
+      "title": { "en": "Check for small insects", "hi": "छोटे कीट देखें" },
+      "detail": {
+        "en": "Look for small white flies or tiny insects on leaves and shoots.",
+        "hi": "पत्तियों और टहनियों पर छोटी सफ़ेद मक्खियाँ या छोटे कीट देखें।"
+      },
+      "why": {
+        "en": "{disease} is spread by small insects, so finding them helps stop it reaching more plants.",
+        "hi": "यह समस्या ({disease}) छोटे कीटों से फैलती है, इसलिए उन्हें पहचानने से इसे और पौधों तक पहुँचने से रोका जा सकता है।"
+      }
+    },
+    "keep_monitoring": {
+      "when": "leaf looks healthy (confident)",
+      "weight": 85,
+      "title": { "en": "Keep checking regularly", "hi": "नियमित रूप से जाँचते रहें" },
+      "detail": {
+        "en": "Walk your field once or twice a week and look at a few leaves closely.",
+        "hi": "हफ़्ते में एक-दो बार खेत में घूमें और कुछ पत्तियों को ध्यान से देखें।"
+      },
+      "why": {
+        "en": "Problems are easiest to manage when they are spotted early.",
+        "hi": "समस्याओं को शुरुआत में पहचानने पर उन्हें संभालना सबसे आसान होता है।"
+      }
+    },
+    "check_local_guidance": {
+      "when": "a disease or pest is detected, or the photo is unclear",
+      "weight": 80,
+      "title": { "en": "Check local guidance", "hi": "स्थानीय सलाह लें" },
+      "detail": {
+        "en": "Before any treatment, confirm with your local agriculture extension office or Krishi Vigyan Kendra.",
+        "hi": "कोई भी उपचार करने से पहले अपने स्थानीय कृषि विस्तार कार्यालय या कृषि विज्ञान केंद्र से पुष्टि करें।"
+      },
+      "why": {
+        "en": "This result is a possibility, not a confirmed diagnosis, and the right treatment depends on your region.",
+        "hi": "यह परिणाम एक संभावना है, पक्का निदान नहीं, और सही उपचार आपके क्षेत्र पर निर्भर करता है।"
+      }
+    },
+    "clean_tools": {
+      "when": "contact-spread virus detected (mosaic)",
+      "weight": 75,
+      "title": { "en": "Wash hands and tools", "hi": "हाथ और औज़ार धोएँ" },
+      "detail": {
+        "en": "Wash hands and tools after touching affected plants, before moving to healthy ones.",
+        "hi": "प्रभावित पौधों को छूने के बाद, स्वस्थ पौधों पर जाने से पहले हाथ और औज़ार धोएँ।"
+      },
+      "why": {
+        "en": "{disease} can spread through touch and tools.",
+        "hi": "यह समस्या ({disease}) छूने और औज़ारों से फैल सकती है।"
+      }
+    },
+    "keep_leaves_dry": {
+      "when": "fungal/bacterial disease (or healthy leaf) AND wet weather recently or rain expected",
+      "weight": 70,
+      "title": { "en": "Keep leaves dry", "hi": "पत्तियों को सूखा रखें" },
+      "detail": {
+        "en": "Water at the base of plants, preferably in the morning, and avoid wetting the leaves.",
+        "hi": "पौधों की जड़ के पास पानी दें, हो सके तो सुबह, और पत्तियों को गीला करने से बचें।"
+      },
+      "why": {
+        "en": "Wet leaves help many leaf diseases spread, and the weather has been or will be wet.",
+        "hi": "गीली पत्तियाँ कई पत्ती रोगों को फैलने में मदद करती हैं, और मौसम नम रहा है या रहेगा।"
+      }
+    },
+    "monitor_weather": {
+      "when": "fungal/bacterial disease AND rain expected in the next 3 days",
+      "weight": 60,
+      "title": { "en": "Watch the weather", "hi": "मौसम पर नज़र रखें" },
+      "detail": {
+        "en": "Rain is expected soon — check your plants again after it rains.",
+        "hi": "जल्द बारिश की संभावना है — बारिश के बाद पौधों को फिर से जाँचें।"
+      },
+      "why": {
+        "en": "About {rain_next} mm of rain is expected in the next 3 days, which can increase disease risk.",
+        "hi": "अगले 3 दिनों में लगभग {rain_next} मिमी बारिश की संभावना है, जिससे रोग का खतरा बढ़ सकता है।"
+      }
+    },
+    "recheck_photo": {
+      "when": "always eligible (lowest priority)",
+      "weight": 50,
+      "title": { "en": "Check again in 3–5 days", "hi": "3–5 दिन में फिर जाँचें" },
+      "detail": {
+        "en": "Take a new photo of the same plant in 3–5 days to track changes.",
+        "hi": "बदलाव पर नज़र रखने के लिए 3–5 दिन में उसी पौधे की नई फोटो लें।"
+      },
+      "why": {
+        "en": "Comparing photos over time shows whether the problem is spreading or stable.",
+        "hi": "समय के साथ तस्वीरों की तुलना से पता चलता है कि समस्या फैल रही है या स्थिर है।"
+      }
+    }
+  },
+
+  "explanation": {
+    "summary": {
+      "en": "Inspection priority is {level} (an estimate) because: {reasons}",
+      "hi": "जाँच की प्राथमिकता {level} है (यह एक अनुमान है), क्योंकि: {reasons}"
+    },
+    "verify": {
+      "disease": {
+        "en": "This is not a confirmed diagnosis. Check nearby plants and confirm with your local agriculture extension office or Krishi Vigyan Kendra.",
+        "hi": "यह पक्का निदान नहीं है। आस-पास के पौधे जाँचें और अपने स्थानीय कृषि विस्तार कार्यालय या कृषि विज्ञान केंद्र से पुष्टि करें।"
+      },
+      "uncertain": {
+        "en": "The photo was unclear, so this result is not reliable. Retake the photo before deciding anything.",
+        "hi": "तस्वीर साफ़ नहीं थी, इसलिए यह परिणाम भरोसेमंद नहीं है। कोई भी फ़ैसला लेने से पहले फोटो दोबारा लें।"
+      },
+      "healthy": {
+        "en": "Leaves can look healthy early in an infection. Keep checking every few days, especially after rain.",
+        "hi": "संक्रमण की शुरुआत में पत्तियाँ स्वस्थ दिख सकती हैं। हर कुछ दिनों में जाँचते रहें, ख़ासकर बारिश के बाद।"
+      }
+    }
+  }
+}

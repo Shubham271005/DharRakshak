@@ -17,6 +17,7 @@ This is the guided, step-by-step plan for building the prototype. We build **one
 Dynaminds-IIITD/
 ├── README.md, ROADMAP.md, requirements.txt, .gitignore, .env.example
 ├── docs/CONTRACT.md            ← plain-language data contract for teammates
+├── docs/MODEL_CARD.md, docs/DECISION_RULES.md ← model + rules, for judges (C4, C6)
 ├── shared/
 │   ├── contract.py             ← data shapes (single source of truth)
 │   ├── sample_data.json        ← mock data matching the contract
@@ -232,22 +233,39 @@ uvicorn backend.main:app --reload
 
 ---
 
-## 🔜 Component 6 — Risk, action-card and explanation engines (F3, F2, F4)
+## ✅ Component 6 — Risk, action-card and explanation engines (F3, F2, F4)
 
-**Goal:** turn predictions, weather and crop stage into a risk estimate, ranked action cards and a "Why?" text, all traceable to rules.
+**Goal:** turn predictions, weather and crop stage into a risk estimate, ranked action cards and a "Why?" text, all traceable to rules. After this, **every analysis is real** and the DEMO EXAMPLE tag only appears on the seeded sample.
 
-**Files:**
-- `shared/content/risk_rules.json`: each rule has a condition, points and a reason text (EN/HI).
-- `shared/content/action_cards.json`: card templates (EN/HI) and when each applies. No pesticide names or doses.
-- `backend/engines/risk.py`, `actions.py`, `explain.py`: small, commented functions.
-- `backend/main.py`: `/analyze` now runs model → weather → risk → actions → explanation and saves the result.
-- `scripts/test_engines.py`: a few fixed scenarios with expected levels.
+**Plain-language rules for judges and experts:** `docs/DECISION_RULES.md`.
 
-**Verify:** the demo photo with mock wet weather gives *elevated*. A healthy leaf in dry weather gives *low*. Every card has a "why".
+**Files created / changed:**
+- `shared/content/labels.json`: each class gets a `type` (fungal, bacterial, viral, insect_spread, pest, healthy), which decides which weather matters.
+- `shared/content/risk_rules.json`: thresholds, points, score-to-level mapping (0–2 low, 3–4 moderate, 5+ elevated), and every reason sentence in EN/HI.
+- `shared/content/action_cards.json`: 11 safe card templates with weights (top 3 shown) and the explanation templates.
+- `shared/content/crops.json`: crop and stage names in EN/HI for the templates.
+- `backend/engines/`:
+  - `facts.py`: one object answering simple questions (disease found? wet recently? rain expected? hot and dry? sensitive stage?).
+  - `risk.py`: the scoring rules.
+  - `actions.py`: card conditions.
+  - `explain.py`: the summary and verify line.
+  - `content.py`: JSON loading and `{placeholder}` filling.
+- `backend/pipeline.py`: model → weather → risk → cards → explanation, with `is_demo=False`.
+- `backend/ml/classifier.py`: `ClassInfo.disease_type`.
+- `backend/services/weather.py`: a "light rain possible" wording when the chance of rain is notable but almost no rain is forecast.
+- `tests/test_engines.py`: 12 realistic scenarios plus a sweep of every class × 4 weather situations × clear or unclear photo (all text filled in both languages, valid priorities). It also includes a **banned-words test** (no pesticide or dose terms, EN and HI) and a **Hindi grammar guard** (no disease name directly before a postposition).
+
+**Found and fixed during live testing:** Hindi postposition agreement ("अंगूर का काला सड़न **से**" became "इस समस्या से …: अंगूर का काला सड़न"), and the explanation reason order.
+
+**Verify:**
+```bash
+pytest                                   # 379 passed
+uvicorn backend.main:app --reload        # upload a leaf photo in /docs → real risk, cards, Why
+```
 
 ---
 
-## ⬜ Component 7 — Finance & loans (F5, mock data)
+## 🔜 Component 7 — Finance & loans (F5, mock data)
 
 **Goal:** loan status, dues, missing documents and schemes from local mock data.
 

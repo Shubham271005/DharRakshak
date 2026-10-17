@@ -80,6 +80,10 @@ def build_summary(rain_past: float, humidity: float, temp: float,
         if rain_next < 1 and (chance_next or 0) < 30:
             en += " Next 3 days: little or no rain expected."
             hi += " अगले 3 दिन: बारिश की संभावना कम है।"
+        elif rain_next < 1:
+            # Almost no rain forecast in mm, but a real chance of showers.
+            en += f" Next 3 days: light rain possible (up to {chance_next:.0f}% chance)."
+            hi += f" अगले 3 दिन: हल्की बारिश संभव (अधिकतम {chance_next:.0f}% संभावना)।"
         else:
             chance_en = f" (up to {chance_next:.0f}% chance)" if chance_next is not None else ""
             chance_hi = f" (अधिकतम {chance_next:.0f}% संभावना)" if chance_next is not None else ""

@@ -1,5 +1,5 @@
 """
-Backend API tests (Components 2–5). Run from the repository root:
+Backend API tests (Components 2–6). Run from the repository root:
     pytest
 
 Each test calls the API exactly like the React app would, against a fresh
@@ -167,9 +167,14 @@ def test_analyze_uses_model_predictions(client):
     assert top["display_name"]["hi"].startswith("संभावित")
     assert body["uncertain"] is False
     assert body["crop_mismatch"] is False
-    # Weather/risk/cards are still placeholders until C5–C6, so is_demo stays True.
-    assert body["is_demo"] is True
+    # Everything is real since Component 6, so the DEMO tag is gone.
+    assert body["is_demo"] is False
     assert body["risk"]["is_estimate"] is True
+    # Fake model: tomato early blight 81%; recorded weather: 27.7 mm recent rain,
+    # rain expected; demo crop is flowering → elevated.
+    assert body["risk"]["level"] == "elevated"
+    assert [c["card_id"] for c in body["action_cards"]] == ["inspect_nearby", "check_local_guidance", "keep_leaves_dry"]
+    assert body["explanation"]["summary"]["en"].startswith("Inspection priority is elevated")
 
 
 def test_analysis_includes_real_weather(client):

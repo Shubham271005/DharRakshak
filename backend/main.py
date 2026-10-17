@@ -71,7 +71,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="DharRakshak API",
-    version="0.5.0",
+    version="0.6.0",
     lifespan=lifespan,
     description="Crop intelligence backend for the DharRakshak hackathon MVP. "
     "Loan data is MOCK — there is no bank integration.",
@@ -112,7 +112,7 @@ def health() -> dict:
     loaded ("loaded") or will load on the first analysis ("not_loaded")."""
     return {
         "status": "ok",
-        "stage": "component-5-weather",
+        "stage": "component-6-engines",
         "model": "loaded" if clf.is_loaded() else "not_loaded",
     }
 
