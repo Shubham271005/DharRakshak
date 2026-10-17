@@ -20,7 +20,12 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python scripts/check_sample_data.py
+
+# Run the app (mock mode, no backend needed)
+streamlit run frontend/app.py
 ```
+
+The app opens at http://localhost:8501.
 
 ## For teammates
 

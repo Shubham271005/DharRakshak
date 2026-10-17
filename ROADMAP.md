@@ -56,7 +56,7 @@ python scripts/check_sample_data.py      # must print "OK"
 
 ---
 
-## 🔜 Component 1 — Frontend shell + teammate screen stubs
+## ✅ Component 1 — Frontend shell + teammate screen stubs
 
 **Goal:** unblock the 4 teammates as early as possible. They need a running app with an empty screen each.
 
@@ -68,13 +68,16 @@ python scripts/check_sample_data.py      # must print "OK"
 - `.streamlit/config.toml`: green theme.
 - `requirements.txt`: add `streamlit`, `requests`.
 
+**Also added:** `CropProfileCreate` in `shared/contract.py`, the model for what the farmer types into the registration form (it rejects future sowing dates).
+
 **Verify:** `streamlit run frontend/app.py` opens, you can switch between 4 placeholder screens, and the language selector works.
+Mock mode is the default. `DHARRAKSHAK_MODE=api` switches to the backend once Component 2 exists.
 
 **Hand-off:** each teammate gets their stub file and `docs/CONTRACT.md`.
 
 ---
 
-## ⬜ Component 2 — Backend skeleton (FastAPI)
+## 🔜 Component 2 — Backend skeleton (FastAPI)
 
 **Goal:** a running API that returns the sample data from every endpoint, so the frontend can switch from mock mode to "real server" mode early.
 

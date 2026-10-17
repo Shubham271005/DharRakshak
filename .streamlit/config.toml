@@ -1,0 +1,14 @@
+# Streamlit theme for DharRakshak (same palette as the pitch deck).
+# Streamlit reads this when you run `streamlit run frontend/app.py`
+# from the repository root.
+
+[theme]
+base = "light"
+primaryColor = "#2E6B3F"
+backgroundColor = "#F7F5EF"
+secondaryBackgroundColor = "#E8EFE0"
+textColor = "#1B2A20"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

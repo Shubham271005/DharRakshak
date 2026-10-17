@@ -15,10 +15,14 @@ This page is for the frontend teammates. The real definitions are in `shared/con
 
 | Screen | Owner | Key in `sample_data.json` | Fields you'll use |
 |---|---|---|---|
-| Crop registration + profile card | Teammate 1 | `crop_profile` | `crop_type`, `variety`, `sowing_date`, `days_since_sowing`, `area_acres`, `location.name`, `stage`, `expected_harvest_start/end`, `yield_estimate` (null = "range pending") |
+| Crop registration + profile card | Teammate 1 | `crop_profile` (the form saves a `CropProfileCreate`) | `crop_type`, `variety`, `sowing_date`, `days_since_sowing`, `area_acres`, `location.name`, `stage`, `expected_harvest_start/end`, `yield_estimate` (null = "range pending") |
 | Analysis results | Teammate 2 | `analysis` | `predictions[]` (`display_name`, `confidence`), `uncertain` + `uncertainty_message`, `weather.summary` + `weather.source`, `risk.level`, `risk.reasons[]`, `action_cards[]` (`priority`, `title`, `detail`, `why`), `explanation.summary`, `explanation.verify`, `is_demo` |
 | Finance & loans | Teammate 3 | `loan_summary` | `data_source`, `loan.display_name`, `loan.status`, `loan.outstanding_amount_inr`, `loan.next_repayment`, `documents[]` (`name`, `submitted`), `missing_document_codes`, `schemes[]` (`name`, `summary`, `official_url`, `verify_note`) |
 | Chatbot + language + theme | Teammate 4 | `chat_examples` | `request.message`, `reply.reply`, `reply.lang`, `reply.is_fallback` |
+
+## How screens get data
+
+Never open `sample_data.json` directly. Call the functions in `frontend/api_client.py`: `get_crop_profile`, `save_crop_profile`, `analyze_image`, `get_latest_analysis`, `get_loan_summary`, `send_chat`. They read the sample file today and the real backend later.
 
 ## Colours (everyone uses these)
 

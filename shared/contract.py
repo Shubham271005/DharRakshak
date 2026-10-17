@@ -132,6 +132,30 @@ class CropProfile(BaseModel):
     yield_estimate: Optional[YieldRange] = Field(None, description="None = 'range pending'")
 
 
+class CropProfileCreate(BaseModel):
+    """What the farmer types into the registration form (Teammate 1's screen).
+
+    The backend turns this into a full `CropProfile`: it assigns `crop_id`,
+    computes `days_since_sowing`, and looks up latitude/longitude from
+    `location_name` (geocoding arrives in Component 5).
+    """
+
+    farmer_name: str = Field(..., min_length=1, max_length=100)
+    preferred_language: str = "en"
+    crop_type: str = Field(..., description="Key from the supported-crops list, e.g. 'tomato'")
+    variety: Optional[str] = None
+    sowing_date: date
+    area_acres: float = Field(..., gt=0, le=1000)
+    location_name: str = Field(..., min_length=1)
+    stage: CropStage
+
+    @model_validator(mode="after")
+    def _sowing_not_in_future(self) -> "CropProfileCreate":
+        if self.sowing_date > date.today():
+            raise ValueError("sowing_date cannot be in the future")
+        return self
+
+
 # ---------------------------------------------------------------------------
 # F1 + F3 + F2 + F4 — One analysis of one uploaded leaf photo
 # ---------------------------------------------------------------------------

@@ -4,3 +4,7 @@
 
 # Component 0 — data contract
 pydantic>=2.7,<3
+
+# Component 1 — frontend shell
+streamlit>=1.38
+requests>=2.31
