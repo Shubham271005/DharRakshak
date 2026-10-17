@@ -23,7 +23,7 @@ This page is for the frontend teammates. The real definitions are in `shared/con
 
 ## How screens get data
 
-Never open `sample_data.json` or call `fetch()` directly. Use the functions in `frontend/src/api/client.js`: `getCropProfile`, `saveCropProfile`, `getWeather`, `getCurrentPosition`, `analyzeImage`, `getLatestAnalysis`, `getLoanSummary`, `sendChat`. They read the sample file in mock mode and the real backend in api mode.
+Never open `sample_data.json` or call `fetch()` directly. Use the functions in `frontend/src/api/client.js`: `getCropProfile`, `saveCropProfile`, `getWeather`, `getCurrentPosition`, `analyzeImage`, `getHistory`, `getLatestAnalysis`, `getLoanSummary`, `setDocumentSubmitted`, `sendChat` (with conversation history), `transcribeAudio` (voice → text). They read the sample file in mock mode and the real backend in api mode.
 
 The easiest way to load data in a screen:
 
@@ -32,7 +32,7 @@ const { data, loading, error, reload } = useApiData(() => getLoanSummary(cropId)
 ```
 
 Text helpers from `useLanguage()`:
-- `t('key')` returns a UI label from `src/i18n/uiText.js`.
+- `t('key')` returns a UI label. The labels live in `shared/i18n/en.json` and `hi.json`; add every new key to **both** (`pytest tests/test_i18n.py` checks).
 - `tr(obj)` picks the right language from backend text like `{en, hi}`.
 
 ## Colours (everyone uses these)

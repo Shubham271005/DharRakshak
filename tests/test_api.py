@@ -263,22 +263,116 @@ def test_new_farmer_has_no_loan(client):
     assert "No loan records" in resp.json()["detail"]
 
 
-# ----- chat (F7, placeholder) -----------------------------------------------
+# ----- chat (F7) --------------------------------------------------------------
 
-@pytest.mark.parametrize("message,lang,expected_snippet,fallback", [
-    ("लोन के लिए कौन से कागज़ बाकी हैं?", "hi", "ज़मीन के रिकॉर्ड", False),
-    ("Why should I inspect nearby plants?", "en", "not a confirmed diagnosis", False),
-    ("Which pesticide should I spray and how much?", "en", "can't recommend", False),
-    ("hello", "hi", "डेमो मोड", True),
+@pytest.mark.parametrize("message,lang,expected_snippet", [
+    ("लोन के लिए कौन से कागज़ बाकी हैं?", "hi", "ज़मीन के रिकॉर्ड"),
+    ("Why should I inspect nearby plants?", "en", "not a confirmed diagnosis"),
+    ("Which pesticide should I spray and how much?", "en", "can't recommend"),
+    ("hello", "hi", "ऑफ़लाइन"),
 ])
-def test_chat_placeholder(client, message, lang, expected_snippet, fallback):
+def test_chat_falls_back_to_saved_answers_when_llm_is_down(client, message, lang, expected_snippet):
     resp = client.post("/api/chat", json={"crop_id": DEMO_CROP, "message": message, "lang": lang})
     assert resp.status_code == 200
     body = resp.json()
     assert expected_snippet in body["reply"]
-    assert body["is_fallback"] is fallback
+    assert body["is_fallback"] is True  # always marked when the LLM didn't answer
+
+
+def test_chat_is_grounded_in_farmer_data(client, fake_llm):
+    fake_llm.reply = "दो कागज़ बाकी हैं: ज़मीन के रिकॉर्ड की कॉपी और पासपोर्ट साइज़ फोटो।"
+    resp = client.post("/api/chat", json={"crop_id": DEMO_CROP, "message": "लोन के कागज़?", "lang": "hi"})
+    body = resp.json()
+    assert body["is_fallback"] is False
+    assert body["reply"] == fake_llm.reply
+    assert body["used_context"] == ["crop_profile", "analysis", "weather", "loan_summary"]
+    system, context = fake_llm.messages[0]["content"], fake_llm.messages[1]["content"]
+    assert "Reply in Hindi" in system and "Never name any pesticide" in system
+    assert "Land record copy" in context and "Passport-size photo" in context  # missing docs
+    assert "sample data, not from a real bank" in context
+    assert fake_llm.messages[-1] == {"role": "user", "content": "लोन के कागज़?"}
+
+
+def test_chat_sends_recent_history(client, fake_llm):
+    fake_llm.reply = "Yes."
+    history = [{"role": "user", "text": f"q{i}"} if i % 2 == 0 else {"role": "assistant", "text": f"a{i}"} for i in range(12)]
+    client.post("/api/chat", json={"crop_id": DEMO_CROP, "message": "and now?", "lang": "en", "history": history})
+    sent = [m["content"] for m in fake_llm.messages[2:-1]]
+    assert sent == [t["text"] for t in history[-8:]]  # only the last 8 turns
+
+
+def test_chat_blocks_dose_advice_from_the_model(client, fake_llm):
+    fake_llm.reply = "Mix 2 ml per litre of water and apply weekly."
+    body = client.post("/api/chat", json={"crop_id": DEMO_CROP, "message": "How much to use?", "lang": "en"}).json()
+    assert "2 ml" not in body["reply"]
+    assert "Krishi Vigyan Kendra" in body["reply"]
+
+
+def test_chat_for_new_farmer_says_no_loan(client, fake_llm):
+    fake_llm.reply = "OK"
+    crop_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
+    body = client.post("/api/chat", json={"crop_id": crop_id, "message": "loan?", "lang": "en"}).json()
+    assert body["used_context"] == ["crop_profile"]
+    assert "No loan records" in fake_llm.messages[1]["content"]
+
+
+# ----- voice (F7) -------------------------------------------------------------
+
+def test_voice_transcribe(client, fake_llm):
+    fake_llm.transcript = "लोन के लिए कौन से कागज़ बाकी हैं"
+    resp = client.post("/api/voice/transcribe", files={"audio": ("q.webm", b"fake-audio", "audio/webm;codecs=opus")}, data={"lang": "hi"})
+    assert resp.status_code == 200
+    assert resp.json() == {"text": fake_llm.transcript, "lang": "hi"}
+    assert fake_llm.stt_calls == [("q.webm", "audio/webm", "hi", 10)]
+
+
+@pytest.mark.parametrize("files,expected", [
+    ({"audio": ("x.txt", b"hello", "text/plain")}, 415),
+    ({"audio": ("q.webm", b"", "audio/webm")}, 400),
+])
+def test_voice_rejects_bad_audio(client, files, expected):
+    assert client.post("/api/voice/transcribe", files=files).status_code == expected
+
+
+def test_voice_unavailable_is_503(client):
+    resp = client.post("/api/voice/transcribe", files={"audio": ("q.webm", b"abc", "audio/webm")})
+    assert resp.status_code == 503
+    assert "type your question" in resp.json()["detail"]
+
+
+def test_voice_silence_is_422(client, fake_llm):
+    fake_llm.transcript = ""
+    assert client.post("/api/voice/transcribe", files={"audio": ("q.webm", b"abc", "audio/webm")}).status_code == 422
 
 
 def test_chat_for_unknown_crop_is_404(client):
     resp = client.post("/api/chat", json={"crop_id": "nope", "message": "hi", "lang": "en"})
     assert resp.status_code == 404
+
+
+# ----- finance (C7) ----------------------------------------------------------
+
+def test_loan_schemes_come_from_content(client):
+    codes = [s["code"] for s in client.get(f"/api/crops/{DEMO_CROP}/loan").json()["schemes"]]
+    assert codes == ["miss", "pmfby", "pm_kisan"]
+
+
+def test_ticking_a_document_updates_missing_list(client):
+    url = f"/api/crops/{DEMO_CROP}/loan/documents/land_record"
+    body = client.put(url, json={"submitted": True}).json()
+    assert body["missing_document_codes"] == ["passport_photo"]
+    assert next(d for d in body["documents"] if d["code"] == "land_record")["submitted"] is True
+    # Persisted: a fresh read agrees, and unticking brings it back.
+    assert client.get(f"/api/crops/{DEMO_CROP}/loan").json()["missing_document_codes"] == ["passport_photo"]
+    body = client.put(url, json={"submitted": False}).json()
+    assert sorted(body["missing_document_codes"]) == ["land_record", "passport_photo"]
+
+
+def test_unknown_document_is_404(client):
+    resp = client.put(f"/api/crops/{DEMO_CROP}/loan/documents/nope", json={"submitted": True})
+    assert resp.status_code == 404
+
+
+def test_document_update_for_farmer_without_loan_is_404(client):
+    crop_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
+    assert client.put(f"/api/crops/{crop_id}/loan/documents/land_record", json={"submitted": True}).status_code == 404

@@ -189,19 +189,43 @@ export async function analyzeImage(cropId, file) {
 
 /** Newest analysis for the crop, or null if there isn't one yet. */
 export async function getLatestAnalysis(cropId) {
-  if (isMockMode()) return mockReturn(sample.analysis)
-  const history = await request(`/crops/${encodeURIComponent(cropId)}/history`)
+  const history = await getHistory(cropId)
   return history[0] ?? null
+}
+
+/** All analyses for the crop, newest first (powers "track progress"). */
+export async function getHistory(cropId) {
+  if (isMockMode()) return mockReturn([sample.analysis])
+  return request(`/crops/${encodeURIComponent(cropId)}/history`)
 }
 
 // ---------------------------------------------------------------------------
 // F5 — finance & loans, MOCK DATA (Teammate 3)
 // ---------------------------------------------------------------------------
 
+// Mock mode keeps document ticks here (lost on page reload).
+let mockLoan = null
+
 /** Throws ApiError with status 404 when the farmer has no loan records yet. */
 export async function getLoanSummary(cropId) {
-  if (isMockMode()) return mockReturn(sample.loan_summary)
+  if (isMockMode()) return mockReturn(mockLoan ?? sample.loan_summary)
   return request(`/crops/${encodeURIComponent(cropId)}/loan`)
+}
+
+/** Tick / untick a checklist document. Returns the updated LoanSummary. */
+export async function setDocumentSubmitted(cropId, code, submitted) {
+  if (isMockMode()) {
+    const loan = structuredClone(mockLoan ?? sample.loan_summary)
+    loan.documents = loan.documents.map((d) => (d.code === code ? { ...d, submitted } : d))
+    loan.missing_document_codes = loan.documents.filter((d) => !d.submitted).map((d) => d.code)
+    mockLoan = loan
+    return mockReturn(loan)
+  }
+  return request(`/crops/${encodeURIComponent(cropId)}/loan/documents/${encodeURIComponent(code)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ submitted }),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -220,8 +244,12 @@ const MOCK_UNKNOWN_REPLY = {
   hi: '(डेमो मोड) चैटबॉट जुड़ने के बाद मैं इसका जवाब दे पाऊँगा।',
 }
 
-/** Send a chat message. Returns a ChatReply: {reply, lang, used_context, is_fallback}. */
-export async function sendChat(cropId, message, lang) {
+/**
+ * Send a chat message. `history` = earlier turns, oldest first:
+ * [{role: 'user' | 'assistant', text}]. Returns a ChatReply:
+ * {reply, lang, used_context, is_fallback}.
+ */
+export async function sendChat(cropId, message, lang, history = []) {
   if (isMockMode()) {
     const text = message.toLowerCase()
     for (const [words, index] of MOCK_CHAT_KEYWORDS) {
@@ -234,5 +262,20 @@ export async function sendChat(cropId, message, lang) {
       is_fallback: true,
     })
   }
-  return postJSON('/chat', { crop_id: cropId, message, lang })
+  return postJSON('/chat', { crop_id: cropId, message, lang, history: history.slice(-20) })
+}
+
+/**
+ * Speech-to-text for the voice assistant: send a recorded Blob, get back
+ * {text, lang}. Throws ApiError 503 if voice input is unavailable.
+ */
+export async function transcribeAudio(blob, lang) {
+  if (isMockMode()) {
+    return mockReturn({ text: lang === 'hi' ? 'लोन के लिए कौन से कागज़ बाकी हैं?' : 'Why should I inspect nearby plants?', lang })
+  }
+  const form = new FormData()
+  const ext = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'webm'
+  form.append('audio', blob, `question.${ext}`)
+  form.append('lang', lang)
+  return request('/voice/transcribe', { method: 'POST', body: form })
 }

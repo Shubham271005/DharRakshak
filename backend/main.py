@@ -1,5 +1,5 @@
 """
-DharRakshak — FastAPI backend (Components 2–5).
+DharRakshak — FastAPI backend (Components 2–9).
 
 Run from the repository root:
     uvicorn backend.main:app --reload --port 8000
@@ -20,17 +20,21 @@ What's real vs. placeholder so far:
   MobileNetV2 model (top-3 predictions, uncertainty, crop mismatch).
 - Real (C5): crop locations are geocoded with Open-Meteo (or taken from the
   phone's GPS), and each analysis includes real recent + forecast weather.
-- Placeholder: risk, action cards and explanation in each analysis
-  (Component 6); chat uses keyword matching (Component 9).
+- Real (C6): risk, action cards and explanation from transparent rules.
+- Real (C7): loan document checklist you can tick off (loan data is MOCK).
+- Real (C9): grounded multilingual chatbot (Groq LLM) and voice input
+  (Groq Whisper). Falls back to saved answers if Groq is unavailable.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+
+from backend import config  # noqa: F401  (loads .env before anything reads keys)
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,8 +42,8 @@ from backend import repository
 from backend.db import init_db
 from backend.ml import classifier as clf
 from backend.pipeline import run_analysis
-from backend.sample_store import mock_chat_reply
-from backend.services import geocoding, weather
+from backend.services import chat as chat_service
+from backend.services import geocoding, llm, weather
 
 log = logging.getLogger("dharrakshak")
 from shared.contract import (
@@ -48,7 +52,9 @@ from shared.contract import (
     ChatRequest,
     CropProfile,
     CropProfileCreate,
+    DocumentUpdate,
     LoanSummary,
+    VoiceTranscript,
     Weather,
 )
 
@@ -71,7 +77,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="DharRakshak API",
-    version="0.6.0",
+    version="0.9.0",
     lifespan=lifespan,
     description="Crop intelligence backend for the DharRakshak hackathon MVP. "
     "Loan data is MOCK — there is no bank integration.",
@@ -112,8 +118,9 @@ def health() -> dict:
     loaded ("loaded") or will load on the first analysis ("not_loaded")."""
     return {
         "status": "ok",
-        "stage": "component-6-engines",
+        "stage": "component-9-chat-voice",
         "model": "loaded" if clf.is_loaded() else "not_loaded",
+        "chat": "configured" if config.groq_api_key() else "no_api_key",
     }
 
 
@@ -235,16 +242,65 @@ def loan(crop_id: str) -> LoanSummary:
     return summary
 
 
+@router.put("/crops/{crop_id}/loan/documents/{code}", response_model=LoanSummary, tags=["finance"])
+def update_document(crop_id: str, code: str, update: DocumentUpdate) -> LoanSummary:
+    """Tick or untick a checklist document. Returns the updated summary, so
+    the missing list and progress refresh immediately. (Mock data — this
+    records what the farmer has handed to the bank; it is not sent anywhere.)"""
+    _require_crop(crop_id)
+    summary = repository.set_document_submitted(crop_id, code, update.submitted)
+    if summary is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No document '{code}' on this farmer's loan checklist.")
+    return summary
+
+
 # ---------------------------------------------------------------------------
 # F7 — chatbot
 # ---------------------------------------------------------------------------
 
 @router.post("/chat", response_model=ChatReply, tags=["chat"])
 def chat(request: ChatRequest) -> ChatReply:
-    """Ask a question about the crop or loan. SKELETON: keyword-matched
-    sample answers; the grounded LLM arrives in Component 9."""
-    _require_crop(request.crop_id)
-    return mock_chat_reply(request)
+    """Ask a question about the crop or loan, in English or Hindi. The answer
+    is grounded in this farmer's saved data. If the LLM is unavailable, a
+    saved demo answer is returned with `is_fallback: true`."""
+    crop = _require_crop(request.crop_id)
+    return chat_service.answer(request, crop)
+
+
+# ---------------------------------------------------------------------------
+# F7 — voice assistant (speech-to-text; replies are spoken by the browser)
+# ---------------------------------------------------------------------------
+
+ALLOWED_AUDIO_TYPES = {
+    "audio/webm", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3",
+    "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/flac", "video/webm",  # some browsers label recordings video/webm
+}
+MAX_AUDIO_BYTES = 10 * 1024 * 1024  # ~10 minutes of compressed speech; plenty for a question
+
+
+@router.post("/voice/transcribe", response_model=VoiceTranscript, tags=["chat"])
+async def transcribe(
+    audio: UploadFile = File(..., description="Recorded question (webm/ogg/wav/mp3/m4a)"),
+    lang: str = Form("hi", description="Expected language: 'hi' or 'en'"),
+) -> VoiceTranscript:
+    """Speech-to-text for the voice assistant (Groq Whisper). The frontend
+    sends the text to /api/chat and reads the reply aloud with the browser's
+    built-in voice."""
+    content_type = (audio.content_type or "").split(";")[0].strip()
+    if content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"Unsupported audio type: {content_type or 'unknown'}")
+    data = await audio.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The recording is empty.")
+    if len(data) > MAX_AUDIO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Recording is too long.")
+    try:
+        text = await run_in_threadpool(llm.transcribe, data, audio.filename or "question.webm", content_type, lang)
+    except llm.LLMUnavailable as err:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Voice input is unavailable right now. Please type your question.") from err
+    if not text:
+        raise HTTPException(422, "Couldn't hear any speech. Please try again, a little closer to the microphone.")
+    return VoiceTranscript(text=text, lang=lang if lang in ("hi", "en") else "en")
 
 
 app.include_router(router)

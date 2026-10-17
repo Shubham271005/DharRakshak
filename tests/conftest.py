@@ -8,6 +8,9 @@ Shared test fixtures.
 - Open-Meteo (weather + geocoding) is replaced by recorded responses for
   EVERY test (autouse), so tests never use the network. Set
   `fake_open_meteo.down = True` in a test to simulate an outage.
+- Groq (chatbot LLM + Whisper) is replaced by `fake_llm` for EVERY test, so
+  tests never use the network or the real API key. By default it is "down"
+  (exercises the fallback); set `fake_llm.reply = "..."` to make it answer.
 """
 
 import pytest
@@ -15,7 +18,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.ml import classifier as clf
-from backend.services import geocoding, weather
+from backend.services import geocoding, llm, weather
 from shared.contract import Prediction
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -129,3 +132,33 @@ def fake_open_meteo(monkeypatch):
     yield fake
     weather.clear_cache()
     geocoding._geocode_cached.cache_clear()
+
+
+class FakeLLM:
+    """Stands in for backend.services.llm. Records what was sent."""
+
+    def __init__(self):
+        self.reply = None           # None = unavailable (fallback path)
+        self.transcript = None      # None = speech-to-text unavailable
+        self.messages = None
+        self.stt_calls = []
+
+    def chat_complete(self, messages, max_tokens=500, temperature=0.3):
+        self.messages = messages
+        if self.reply is None:
+            raise llm.LLMUnavailable("fake: no LLM")
+        return self.reply, "fake-model"
+
+    def transcribe(self, audio, filename, content_type, lang=None):
+        self.stt_calls.append((filename, content_type, lang, len(audio)))
+        if self.transcript is None:
+            raise llm.LLMUnavailable("fake: no STT")
+        return self.transcript
+
+
+@pytest.fixture(autouse=True)
+def fake_llm(monkeypatch):
+    fake = FakeLLM()
+    monkeypatch.setattr(llm, "chat_complete", fake.chat_complete)
+    monkeypatch.setattr(llm, "transcribe", fake.transcribe)
+    return fake

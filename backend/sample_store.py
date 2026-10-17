@@ -7,8 +7,8 @@ backend/repository.py). What's left here is:
 - `sample()`: loads shared/sample_data.json. Used to seed the demo farmer,
   to supply the placeholder weather/risk/cards in backend/pipeline.py until
   Components 5–6, and scheme notes until Component 7.
-- `mock_chat_reply(request)`: placeholder chatbot. Replaced by the
-  grounded LLM + voice assistant in Component 9.
+- `mock_chat_reply(request)`: saved demo answers, used by the real chatbot
+  (backend/services/chat.py) as its FALLBACK when Groq is unavailable.
 
 When those components land, the matching function here is deleted.
 """
@@ -40,13 +40,14 @@ _CHAT_KEYWORDS: list[tuple[tuple[str, ...], int]] = [
 ]
 
 _UNKNOWN_REPLY = {
-    "en": "(Demo mode) I'll be able to answer this once the chatbot is connected.",
-    "hi": "(डेमो मोड) चैटबॉट जुड़ने के बाद मैं इसका जवाब दे पाऊँगा।",
+    "en": "The chatbot is offline right now, so I can only give saved answers. Please try again in a moment.",
+    "hi": "चैटबॉट अभी ऑफ़लाइन है, इसलिए मैं केवल सहेजे गए जवाब दे सकता हूँ। कृपया थोड़ी देर बाद फिर कोशिश करें।",
 }
 
 
 def mock_chat_reply(request: ChatRequest) -> ChatReply:
-    """Placeholder chatbot until Component 9."""
+    """Saved demo answers (fallback when the LLM is unavailable). Safety first:
+    pesticide questions are matched before anything else."""
     text = request.message.lower()
     for words, example_index in _CHAT_KEYWORDS:
         if any(word in text for word in words):

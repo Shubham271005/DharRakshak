@@ -1,0 +1,44 @@
+{
+  "_about": "Government schemes worth checking, per loan type (F5). Short, neutral summaries only — no amounts, rates or eligibility promises that could go out of date. Every scheme carries a 'verify' note pointing the farmer to their bank or the official portal.",
+  "schemes": {
+    "miss": {
+      "name": { "en": "Interest subvention on crop loans (MISS)", "hi": "फसल ऋण पर ब्याज सहायता (MISS)" },
+      "summary": {
+        "en": "Government interest support on short-term crop loans such as KCC, with extra support for paying on time.",
+        "hi": "किसान क्रेडिट कार्ड जैसे अल्पकालिक फसल ऋणों पर सरकारी ब्याज सहायता, समय पर भुगतान करने पर अतिरिक्त सहायता के साथ।"
+      },
+      "official_url": null,
+      "verify_note": {
+        "en": "Check eligibility and current terms with your bank.",
+        "hi": "पात्रता और मौजूदा शर्तें अपने बैंक से जाँचें।"
+      }
+    },
+    "pmfby": {
+      "name": { "en": "PMFBY crop insurance", "hi": "प्रधानमंत्री फसल बीमा योजना (PMFBY)" },
+      "summary": {
+        "en": "Government crop insurance scheme covering crop losses from natural risks.",
+        "hi": "प्राकृतिक जोखिमों से फसल नुकसान को कवर करने वाली सरकारी फसल बीमा योजना।"
+      },
+      "official_url": "https://pmfby.gov.in",
+      "verify_note": {
+        "en": "Check enrolment dates and eligibility on the official portal.",
+        "hi": "नामांकन की तारीखें और पात्रता आधिकारिक पोर्टल पर जाँचें।"
+      }
+    },
+    "pm_kisan": {
+      "name": { "en": "PM-KISAN income support", "hi": "पीएम-किसान आय सहायता" },
+      "summary": {
+        "en": "Direct income support paid to eligible farmer families in instalments.",
+        "hi": "पात्र किसान परिवारों को किस्तों में सीधी आय सहायता।"
+      },
+      "official_url": "https://pmkisan.gov.in",
+      "verify_note": {
+        "en": "Check your eligibility and payment status on the official portal.",
+        "hi": "अपनी पात्रता और भुगतान की स्थिति आधिकारिक पोर्टल पर जाँचें।"
+      }
+    }
+  },
+  "by_loan_type": {
+    "kcc": ["miss", "pmfby", "pm_kisan"]
+  }
+}

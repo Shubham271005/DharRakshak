@@ -265,66 +265,82 @@ uvicorn backend.main:app --reload        # upload a leaf photo in /docs → real
 
 ---
 
-## 🔜 Component 7 — Finance & loans (F5, mock data)
+## ✅ Component 7 — Finance & loans (F5, mock data)
 
-**Goal:** loan status, dues, missing documents and schemes from local mock data.
-
-**Files:** `shared/content/loan_documents.json` (required documents per loan type), `shared/content/schemes.json` (short scheme notes with a "verify" line), `backend/services/loans.py` (missing = required − submitted), and the `/crops/{id}/loan` route reading from the database.
-
-**Verify:** mark a document as submitted, and the missing list and progress update. The response always has `data_source="mock"`.
-
----
-
-## ⬜ Component 8 — Regional languages (F6)
-
-**Goal:** the whole interface switches between English and Hindi.
-
-**Files:** `shared/i18n/en.json` and `hi.json` (every UI label, keyed by id), the `t()` helper in `frontend/src/i18n/LanguageContext.jsx` reading them, and a language-coverage check script.
-
-**Verify:** switching to हिंदी changes all labels, cards, alerts and finance text. The coverage script reports no missing keys. Add a regional language only if its file is complete.
-
----
-
-## ⬜ Component 9 — Multilingual chatbot + voice assistant (F7)
-
-**Goal:** a chatbot that answers in the farmer's language, grounded in their saved data, that the farmer can also **speak to and hear answers from**.
-
-**Before starting, ask the team:** which LLM provider and which speech provider to use, and for their API keys. Options for Hindi and Indian languages include Sarvam AI, Google Cloud Speech/TTS, Azure Speech, ElevenLabs, OpenAI Whisper, and Bhashini. The browser's built-in Web Speech API is a free fallback, but its Hindi support varies by browser.
+**Goal:** loan status, dues, a document checklist farmers can tick off, and relevant schemes. All of it is clearly labelled sample data.
 
 **Files:**
-- `backend/services/chat.py`: builds the guardrail system prompt (no pesticide names or doses, no loan-approval promises, say "I don't know", reply in the chosen language) and a context package (profile, latest analysis, action cards, loan summary). It calls the LLM and returns a `ChatReply`. If the API is unavailable, it falls back to the saved answers with `is_fallback=true`.
-- `backend/services/voice.py`: speech-to-text (farmer's voice note to text in Hindi or English) and text-to-speech (reply text to audio in the same language).
-- `backend/main.py`: `POST /api/chat` uses the real LLM. New `POST /api/voice/chat` takes an audio clip, transcribes it, gets the grounded reply, and returns text plus audio.
-- `shared/contract.py`: voice request/response models (transcript, reply, audio).
-- Frontend: a mic button in the chat (record, then send), a "listening…" state, and auto-play of the spoken reply with a mute toggle. Owned by Teammate 4 together with the chat screen.
-- `.env.example`: placeholder names for the chosen keys (the real `.env` is git-ignored).
-- `requirements.txt`: the provider SDKs and `python-dotenv`.
+- `shared/content/loan_documents.json`: general document checklist per loan type, with a note that requirements vary by bank.
+- `shared/content/schemes.json`: MISS interest subvention, PMFBY crop insurance and PM-KISAN. Neutral summaries only (no amounts or rates that can go out of date), each with a "verify" note and official link.
+- `backend/repository.py`: `set_document_submitted()`, and schemes now come from the content files.
+- `PUT /api/crops/{id}/loan/documents/{code}` (body `{"submitted": true}`): ticks or unticks a document and returns the updated summary. Unknown documents and farmers with no loan return 404.
+- Frontend `setDocumentSubmitted()`. The checkbox updates instantly and rolls back if saving fails.
 
-**Verify:**
-- Typed or spoken in Hindi, "लोन के लिए कौन से कागज़ बाकी हैं?" gets the correct missing documents, spoken back in Hindi.
-- A pesticide-dose question gets a polite refusal.
-- With the keys removed, chat returns the fallback with `is_fallback=true`, and the mic button says voice is unavailable.
+## ✅ Component 8 — Regional languages (F6)
 
----
+**Goal:** the whole interface works in English and Hindi.
 
-## ⬜ Component 10 — Integration, testing and demo prep
+**Files:**
+- `shared/i18n/en.json` and `hi.json`: all 105 UI labels in one reviewable place. `frontend/src/i18n/uiText.js` builds the label table from them.
+- Backend text (predictions, risk reasons, cards, explanations, weather summaries, schemes, chat) was already bilingual from Components 4–7.
+- `tests/test_i18n.py`:
+  - both files have the same keys and matching `{placeholders}`;
+  - every Hindi label actually contains Hindi script;
+  - every `t('key')` the React app uses exists.
+- **Decision:** English + Hindi only for the MVP. A regional language is added by creating one more JSON file plus one entry in `LANGUAGES`, once a native speaker has checked it.
 
-**Goal:** everything works end to end, reliably, on the demo laptop.
+## ✅ Component 9 — Multilingual chatbot + voice assistant (F7)
 
-**Tasks:** switch the frontend to real-server mode, test the full demo script (from the pitch notes), write `scripts/run_demo.sh` (starts backend and frontend), cache the demo responses for offline backup, record a backup screen video, and update the README with run instructions.
+**Goal:** a chatbot grounded in the farmer's own data that the farmer can also talk to.
 
-**Verify:** a teammate who didn't write the code can run the whole demo from the README in under 5 minutes.
+**Provider (chosen by the team):** **Groq**, with one API key for both the LLM and speech-to-text. The key lives in the git-ignored `.env` (template: `.env.example`).
+- **Chat model:** `openai/gpt-oss-120b`, falling back to `qwen/qwen3.8-27b`. We picked it after a head-to-head test of all three Groq chat models on a grounded Hindi loan question and a pesticide-dose question that must be refused. gpt-oss-120b gave the most precise answers. gpt-oss-20b hinted at a loan outcome. Qwen is the fastest, so it's the backup.
+- **Speech-to-text:** `whisper-large-v3`.
+- **Text-to-speech:** the browser's built-in voices. Groq has no Hindi TTS, so this needs no key.
 
----
+**Files:**
+- `backend/config.py`: loads `.env`.
+- `backend/services/llm.py`: Groq chat (with model fallback) and Whisper. Whisper's "no speech" scores and a repeated-word check drop transcripts it invents from noise. In testing, a plain beep had become "प्रस्तुति प्रस्तुति प्रस्तुति".
+- `backend/services/chat.py`: system rules and a **context package** (profile, latest analysis with risk reasons and cards, weather, mock loan with missing documents and schemes), plus the last 8 turns of history. **Two safety layers:** the model is told to refuse products, doses and loan promises, and a regex replaces any dose-like reply. If Groq is down, the saved answers come back with `is_fallback=true`.
+- `shared/contract.py`: `ChatTurn` (history), `ChatRequest.history`, `VoiceTranscript`.
+- `POST /api/chat` (real LLM) and `POST /api/voice/transcribe` (audio upload, webm/ogg/wav/mp3/m4a). Silence returns 422 and an outage returns 503, each with a friendly message.
+- Frontend `lib/speech.js`: `useRecorder()` for the mic (picks a format each browser supports) and `useSpeaker()` for read-aloud. It detects whether the device has a Hindi voice.
 
-## Teammate frontend tasks (start after Component 1)
+**Live-tested with the real key:**
+- Missing documents in Hindi: correct.
+- Follow-up question about the next instalment: answered ₹12,000 due 15 Dec, using the earlier conversation.
+- Fungicide dose: refused.
+- "Will my loan be approved?": "can't guarantee… sample data".
+- Spoken Hindi question: transcribed and answered.
 
-| Teammate | Screen file | Builds | Data |
-|---|---|---|---|
-| 1 | `frontend/src/screens/ProfileScreen.jsx` | Crop registration form + profile card | `crop_profile` |
-| 2 | `frontend/src/screens/AnalysisScreen.jsx` | Prediction bars, risk badge, action cards, "Why?" box | `analysis` |
-| 3 | `frontend/src/screens/FinanceScreen.jsx` | Loan card, documents checklist (missing in red), schemes, MOCK tag | `loan_summary` |
-| 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Chat bubbles, input box, mic button and voice playback (after C9), language selector, consistent styling | `chat_examples` |
+## ✅ Component 10 — Screens, integration and demo prep
 
-Everyone builds against mock mode first. In Component 10 we flip the switch to the real backend.
+**Goal:** a complete, working app that anyone on the team can start and demo.
 
+**Files:**
+- **All four screens fully built:**
+  - `ProfileScreen.jsx`: profile card, live weather card, edit or register form with "use my location".
+  - `AnalysisScreen.jsx`: photo upload or camera, possibilities, risk with reasons and points, 3 action cards with "Why?", explanation, check history.
+  - `FinanceScreen.jsx`: MOCK banner, loan metrics, tickable checklist with progress, schemes with official links.
+  - `ChatScreen.jsx`: chat with history, suggested questions, 🎤 voice input, 🔊 spoken answers with mute, fallback labels.
+- Each screen keeps a short **POLISH TASKS** list for its teammate in its header comment.
+- `components/ui.jsx`: Button, Field, ProgressBar, RiskBadge, Notice and more.
+- `scripts/run_demo.sh`: one command starts the backend and frontend, checks setup and ports, and stops both on Ctrl+C.
+- `frontend/vite.config.js`: the proxy target can be set with `DHARRAKSHAK_API_PROXY`.
+- `README.md` (full setup and run guide) and `docs/DEMO_SCRIPT.md` (4-minute demo with fallbacks).
+
+**Verified:**
+- `pytest`: 500+ tests.
+- A browser end-to-end test (Playwright and Chrome, real backend, model, weather and Groq) covered: profile and weather load; upload gives a real result (tomato late blight, 73%, ELEVATED); ticking a document moves 3/5 to 4/5; the English and Hindi chat answer correctly; Hindi UI; phone layout; no console errors.
+- The microphone was tested with Chrome's fake microphone: the recording uploads, and noise is rejected kindly in the farmer's language.
+
+## Teammate tasks (polish, testing, demo)
+
+All screens work. Each teammate owns their screen's finishing touches, testing and demo part. The full list is in each file's header comment.
+
+| Teammate | Screen file | Owns |
+|---|---|---|
+| 1 | `frontend/src/screens/ProfileScreen.jsx` | Phone layout check, Hindi wording review, auto-hiding "Saved", registering a crop live in the demo |
+| 2 | `frontend/src/screens/AnalysisScreen.jsx` | Choosing and testing demo photos, clickable history, bar animation, Hindi review |
+| 3 | `frontend/src/screens/FinanceScreen.jsx` | Checking scheme text against official sites, repayment countdown, Hindi review, ticking a document live |
+| 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Mic and voice testing on laptop and phone, copy-answer button, consistent styling, Hindi review |

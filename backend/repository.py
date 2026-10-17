@@ -8,8 +8,7 @@ never deals with SQL rows.
 Coordinates are resolved by the caller (backend/main.py: GPS from the form,
 or Open-Meteo geocoding) and passed in — this module only stores data.
 
-Later components add to this file:
-- Component 7 adds marking documents as submitted.
+Loan schemes come from shared/content/schemes.json (by loan type).
 """
 
 from __future__ import annotations
@@ -19,6 +18,7 @@ import uuid
 from datetime import date
 
 from backend.db import connect
+from backend.engines.content import load
 from backend.sample_store import sample
 from shared.contract import (
     AnalysisResult,
@@ -27,6 +27,7 @@ from shared.contract import (
     DocumentItem,
     Loan,
     LoanSummary,
+    Scheme,
     LocalizedText,
     Location,
     RepaymentDue,
@@ -187,9 +188,32 @@ def get_loan_summary(crop_id: str) -> LoanSummary | None:
         ),
         documents=documents,
         missing_document_codes=[d.code for d in documents if not d.submitted],
-        # Scheme notes move to shared/content/schemes.json in Component 7.
-        schemes=sample().loan_summary.schemes,
+        schemes=schemes_for(loan["loan_type"]),
     )
+
+
+def schemes_for(loan_type: str) -> list[Scheme]:
+    """Schemes worth checking for a loan type (shared/content/schemes.json)."""
+    content = load("schemes")
+    return [
+        Scheme(code=code, **content["schemes"][code])
+        for code in content["by_loan_type"].get(loan_type, [])
+    ]
+
+
+def set_document_submitted(crop_id: str, code: str, submitted: bool) -> LoanSummary | None:
+    """Mark one checklist document as submitted / not submitted for the loan
+    of the farmer who owns this crop. Returns the updated summary, or None if
+    the farmer has no loan or the document code isn't on the checklist."""
+    with connect() as conn:
+        updated = conn.execute(
+            """UPDATE loan_documents SET submitted = ?
+               WHERE code = ? AND loan_id = (
+                   SELECT l.loan_id FROM loans l JOIN crops c ON c.farmer_id = l.farmer_id
+                   WHERE c.crop_id = ? ORDER BY l.loan_id LIMIT 1)""",
+            (int(submitted), code, crop_id),
+        ).rowcount
+    return get_loan_summary(crop_id) if updated else None
 
 
 # ---------------------------------------------------------------------------
@@ -237,9 +261,14 @@ def seed_demo_if_empty() -> bool:
              loan.next_repayment and loan.next_repayment.due_date.isoformat(),
              loan.next_repayment and loan.next_repayment.amount_inr, ls.data_source),
         )
+        # Checklist from shared/content/loan_documents.json; which ones are
+        # already submitted comes from the sample (land record + photo missing).
+        submitted = {d.code: d.submitted for d in ls.documents}
+        checklist = load("loan_documents")[loan.loan_type]
         conn.executemany(
             "INSERT INTO loan_documents (loan_id, code, name_json, submitted, position) VALUES (?, ?, ?, ?, ?)",
-            [(loan.loan_id, d.code, d.name.model_dump_json(), int(d.submitted), i) for i, d in enumerate(ls.documents)],
+            [(loan.loan_id, d["code"], LocalizedText(**d["name"]).model_dump_json(), int(submitted.get(d["code"], False)), i)
+             for i, d in enumerate(checklist)],
         )
     save_analysis(demo.analysis)
     return True

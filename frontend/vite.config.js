@@ -14,7 +14,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8000',
+      // Override with DHARRAKSHAK_API_PROXY=http://localhost:8001 to point
+      // at a backend on another port.
+      '/api': process.env.DHARRAKSHAK_API_PROXY ?? 'http://localhost:8000',
     },
     fs: {
       allow: ['..'],

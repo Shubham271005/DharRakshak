@@ -2,56 +2,121 @@
 
 *From crop symptoms to smarter farming decisions.*
 
-DharRakshak is an AI crop assistant. It turns a leaf photo, the farmer's crop profile and local context into prioritized, explainable next steps in the farmer's own language. It also offers loan and document guidance (mock data) and a multilingual chatbot.
+DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a leaf. The app identifies **possible** problems with a pretrained image model, combines that with **real local weather** and the crop's growth stage, and gives a **risk estimate**, **ranked next steps** and a plain-language **"Why?"**. Everything is in English or Hindi. It also tracks **loan documents** (sample data) and has a **multilingual chatbot you can talk to**.
 
-> **Status:** hackathon MVP, under construction. See [ROADMAP.md](ROADMAP.md) for progress and the order components are built in.
+## Features
+
+| | Feature | How |
+|---|---|---|
+| F1 | Leaf symptom analysis | MobileNetV2 (PlantVillage, 38 classes, 14 crops) → top-3 possibilities with confidence |
+| F2 | Crop profile + action cards | Saved profile, 3 ranked safe next steps |
+| F3 | Context-aware risk | Rules combining the photo, Open-Meteo weather and crop stage → low / moderate / elevated (estimate) |
+| F4 | Explainability | Every point in the risk score has a reason sentence, plus a "verify" line |
+| F5 | Finance & loans | Loan status, repayments, document checklist you can tick, schemes. **Mock data, no bank integration** |
+| F6 | Languages | English + Hindi everywhere (UI, cards, alerts, chat) |
+| F7 | Chatbot + voice | Groq LLM grounded in the farmer's data. Speak your question (Groq Whisper) and hear the answer (browser voice) |
+
 ## Tech stack
 
-- **Backend:** Python 3.11+, FastAPI, SQLite
-- **AI:** pretrained MobileNetV2 plant-disease classifier ([model card](docs/MODEL_CARD.md)), rules-based risk and action engines, an LLM API for the chatbot
-- **Frontend:** React 19 + Vite + Tailwind CSS v4
-- **Data:** Open-Meteo weather (with mock fallback). Loan data is **mock only**, with no bank integration.
+- **Backend:** Python 3.11+, FastAPI, SQLite, PyTorch (CPU)
+- **Frontend:** React 19, Vite, Tailwind CSS v4
+- **AI:** MobileNetV2 plant-disease classifier ([model card](docs/MODEL_CARD.md)), transparent decision rules ([rules](docs/DECISION_RULES.md)), Groq `openai/gpt-oss-120b` (fallback `qwen/qwen3.8-27b`) for chat, `whisper-large-v3` for speech-to-text
+- **Data:** Open-Meteo weather and geocoding (free, no key). Loan data is sample data only.
 
-## Quick start (so far)
+---
+
+## First-time setup (once per laptop)
+
+You need **Python 3.11+**, **Node.js 20+** and internet for the first setup.
 
 ```bash
+git clone <repo-url> && cd Dynaminds-IIITD
+
+# 1. Python environment
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-# Linux only: get the small CPU build of PyTorch first (avoids a ~2 GB GPU download)
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+# Linux only: small CPU-only PyTorch first (avoids a ~2 GB GPU download)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
-python scripts/download_model.py    # image model weights, ~9 MB (once per laptop)
-python scripts/check_sample_data.py
 
-# Backend (terminal 1) — API docs at http://localhost:8000/docs
-uvicorn backend.main:app --reload --port 8000
-pytest                              # run the backend tests
-python scripts/reset_db.py          # wipe the database back to the demo data
+# 2. Image model weights (~9 MB, checksum-verified)
+python scripts/download_model.py
 
-# Frontend (terminal 2) — opens at http://localhost:5173
-cd frontend
-npm install                         # first time only (needs Node.js 20+)
-npm run dev
+# 3. API key for the chatbot + voice
+cp .env.example .env                      # then open .env and paste your Groq key
+#   GROQ_API_KEY=gsk_...                  (get one at https://console.groq.com/keys)
+
+# 4. Frontend packages
+cd frontend && npm install && cd ..
 ```
 
-The frontend starts in **mock mode** (sample data, no backend needed). To use the real backend, create `frontend/.env` containing `VITE_API_MODE=api` and restart `npm run dev`.
+## Run the app
 
-## For teammates
+**macOS / Linux, one command:**
+```bash
+./scripts/run_demo.sh
+```
+Then open **http://localhost:5173**. Press **Ctrl+C** to stop.
 
-Read [docs/CONTRACT.md](docs/CONTRACT.md) first. It explains the data your screen receives and which part of `shared/sample_data.json` is yours.
+**Windows, or if you prefer two terminals:**
+```bash
+# Terminal 1: backend (API docs at http://localhost:8000/docs)
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+uvicorn backend.main:app --port 8000
+
+# Terminal 2: frontend
+cd frontend
+echo VITE_API_MODE=api > .env             # use the real backend (delete .env for sample-data mode)
+npm run dev                               # opens http://localhost:5173
+```
+
+The sidebar shows **Connected to server** when the frontend can reach the backend.
+
+## Useful commands
+
+| Command | What it does |
+|---|---|
+| `pytest` | Runs all backend tests (500+). No network or API key needed. |
+| `python scripts/reset_db.py` | Wipes the database back to the demo farmer. Do this before the demo. |
+| `python scripts/try_model.py photo.jpg` | Tries the image model on photos |
+| `python scripts/fetch_eval_images.py` + `python scripts/eval_model.py` | Measures model accuracy on labelled test photos |
+| `python scripts/check_sample_data.py` | Checks the sample data matches the data contract |
+
+## Before the demo
+
+1. Run `python scripts/reset_db.py`.
+2. Test your demo leaf photos with `scripts/try_model.py`. Use clear photos of a single leaf.
+3. Open the app in **Chrome**, allow the microphone, and ask one question by voice.
+4. Read [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+## Project layout
+
+```
+backend/        FastAPI app: routes (main.py), database, image model (ml/),
+                decision engines (engines/), weather, geocoding, chat and voice (services/)
+frontend/       React app: screens/, components/, api/client.js (all data access)
+shared/         Data contract (contract.py), sample data, rule content (content/),
+                UI translations (i18n/)
+docs/           Contract, model card, decision rules, demo script
+scripts/        Setup, run, evaluation and maintenance scripts
+tests/          Backend tests
+```
+
+See [ROADMAP.md](ROADMAP.md) for how the project was built, component by component.
 
 ## Honesty rules
 
 - Model outputs are *possible* conditions, never confirmed diagnoses.
 - Risk is always an *estimate*.
-- Loan data is mock. There is no live bank integration.
-- No pesticide names or doses anywhere in the app.
+- Weather is real (Open-Meteo), and shown as unavailable rather than made up.
+- Loan data is **sample data**. There is no bank integration.
+- No pesticide names or doses anywhere. The chatbot refuses, and a filter blocks dose-like replies.
 
+## Team notes
 
-this is the second component draft for our prototype 
+this is the second component draft for our prototype
 
 this is the fifth component draft for our prototype at hackShift IIITD
 
-##5th commit 
+##5th commit
 ##6th commit
-

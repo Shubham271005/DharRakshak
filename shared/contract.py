@@ -275,6 +275,12 @@ class DocumentItem(BaseModel):
     submitted: bool
 
 
+class DocumentUpdate(BaseModel):
+    """Body of PUT /api/crops/{crop_id}/loan/documents/{code}."""
+
+    submitted: bool
+
+
 class Scheme(BaseModel):
     """A government scheme worth checking. Eligibility must be verified officially."""
 
@@ -312,10 +318,21 @@ class LoanSummary(BaseModel):
 # F7 — Multilingual chatbot
 # ---------------------------------------------------------------------------
 
+class ChatTurn(BaseModel):
+    """One earlier message in the conversation, sent back for context."""
+
+    role: Literal["user", "assistant"]
+    text: str = Field(..., max_length=2000)
+
+
 class ChatRequest(BaseModel):
     crop_id: str
     message: str = Field(..., min_length=1, max_length=1000)
     lang: str = Field("en", description="Language the reply should be in")
+    history: list[ChatTurn] = Field(
+        default_factory=list, max_length=20,
+        description="Earlier turns, oldest first (the backend uses the last few)",
+    )
 
 
 class ChatReply(BaseModel):
@@ -328,6 +345,13 @@ class ChatReply(BaseModel):
     is_fallback: bool = Field(
         False, description="True when the LLM was unavailable and a canned answer was used"
     )
+
+
+class VoiceTranscript(BaseModel):
+    """Result of POST /api/voice/transcribe (speech-to-text)."""
+
+    text: str
+    lang: str
 
 
 class ChatExample(BaseModel):

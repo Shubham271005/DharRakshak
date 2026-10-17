@@ -1,0 +1,10 @@
+{
+  "_about": "Documents typically asked for each loan type (F5). This is a GENERAL checklist for guidance — exact requirements vary by bank and state, so the app always tells farmers to confirm with their bank. Order = display order.",
+  "kcc": [
+    { "code": "id_proof", "name": { "en": "Identity proof", "hi": "पहचान पत्र" } },
+    { "code": "address_proof", "name": { "en": "Address proof", "hi": "पते का प्रमाण" } },
+    { "code": "bank_passbook", "name": { "en": "Bank passbook copy", "hi": "बैंक पासबुक की कॉपी" } },
+    { "code": "land_record", "name": { "en": "Land record copy", "hi": "ज़मीन के रिकॉर्ड की कॉपी" } },
+    { "code": "passport_photo", "name": { "en": "Passport-size photo", "hi": "पासपोर्ट साइज़ फोटो" } }
+  ]
+}
