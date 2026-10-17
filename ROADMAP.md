@@ -194,3 +194,4 @@ python scripts/check_sample_data.py      # must print "OK"
 | 4 | `frontend/screens/chat.py` + theme polish | Chat bubbles, input box, language selector, consistent styling | `chat_examples` |
 
 Everyone builds against mock mode first. In Component 10 we flip the switch to the real backend.
+

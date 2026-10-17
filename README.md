@@ -32,3 +32,5 @@ Read [docs/CONTRACT.md](docs/CONTRACT.md) first. It explains the data your scree
 - Risk is always an *estimate*.
 - Loan data is mock. There is no live bank integration.
 - No pesticide names or doses anywhere in the app.
+
+this is the second component draft for our prototype at hackShift IIITD
