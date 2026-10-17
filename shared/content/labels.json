@@ -1,43 +1,537 @@
 {
   "_about": "Class index -> label for Daksh159/plant-disease-mobilenetv2 (38 PlantVillage classes). ORDER MATTERS: entry N is the model's output N. Order verified against the community Space Vansh180/daksh159-plant-disease-api labels.json and the alphabetical PlantVillage folder order. 'crop' must match a crop key in frontend/src/lib/labels.js. 'type' (fungal | bacterial | viral | insect_spread | pest | healthy) says how the problem spreads; it selects the weather rules and action cards in backend/engines/. Late blight is an oomycete, grouped with fungal because it behaves the same way with weather.",
   "classes": [
-    {"label": "Apple___Apple_scab", "crop": "apple", "healthy": false, "name": {"en": "apple scab", "hi": "सेब का स्कैब (पपड़ी रोग)"}, "type": "fungal"},
-    {"label": "Apple___Black_rot", "crop": "apple", "healthy": false, "name": {"en": "apple black rot", "hi": "सेब का काला सड़न"}, "type": "fungal"},
-    {"label": "Apple___Cedar_apple_rust", "crop": "apple", "healthy": false, "name": {"en": "cedar apple rust", "hi": "सेब का सीडर रस्ट (गेरुई)"}, "type": "fungal"},
-    {"label": "Apple___healthy", "crop": "apple", "healthy": true, "name": {"en": "healthy apple leaf", "hi": "स्वस्थ सेब की पत्ती"}, "type": "healthy"},
-    {"label": "Blueberry___healthy", "crop": "blueberry", "healthy": true, "name": {"en": "healthy blueberry leaf", "hi": "स्वस्थ ब्लूबेरी की पत्ती"}, "type": "healthy"},
-    {"label": "Cherry___Powdery_mildew", "crop": "cherry", "healthy": false, "name": {"en": "cherry powdery mildew", "hi": "चेरी का चूर्णिल आसिता (पाउडरी मिल्ड्यू)"}, "type": "fungal"},
-    {"label": "Cherry___healthy", "crop": "cherry", "healthy": true, "name": {"en": "healthy cherry leaf", "hi": "स्वस्थ चेरी की पत्ती"}, "type": "healthy"},
-    {"label": "Corn___Cercospora_leaf_spot", "crop": "corn", "healthy": false, "name": {"en": "maize Cercospora (gray) leaf spot", "hi": "मक्का का सर्कोस्पोरा (धूसर) पत्ती धब्बा"}, "type": "fungal"},
-    {"label": "Corn___Common_rust", "crop": "corn", "healthy": false, "name": {"en": "maize common rust", "hi": "मक्का का सामान्य रतुआ"}, "type": "fungal"},
-    {"label": "Corn___Northern_Leaf_Blight", "crop": "corn", "healthy": false, "name": {"en": "maize northern leaf blight", "hi": "मक्का का उत्तरी पत्ती झुलसा"}, "type": "fungal"},
-    {"label": "Corn___healthy", "crop": "corn", "healthy": true, "name": {"en": "healthy maize leaf", "hi": "स्वस्थ मक्का की पत्ती"}, "type": "healthy"},
-    {"label": "Grape___Black_rot", "crop": "grape", "healthy": false, "name": {"en": "grape black rot", "hi": "अंगूर का काला सड़न"}, "type": "fungal"},
-    {"label": "Grape___Esca_(Black_Measles)", "crop": "grape", "healthy": false, "name": {"en": "grape esca (black measles)", "hi": "अंगूर का एस्का (ब्लैक मीज़ल्स)"}, "type": "fungal"},
-    {"label": "Grape___Leaf_blight", "crop": "grape", "healthy": false, "name": {"en": "grape leaf blight", "hi": "अंगूर का पत्ती झुलसा"}, "type": "fungal"},
-    {"label": "Grape___healthy", "crop": "grape", "healthy": true, "name": {"en": "healthy grape leaf", "hi": "स्वस्थ अंगूर की पत्ती"}, "type": "healthy"},
-    {"label": "Orange___Haunglongbing", "crop": "orange", "healthy": false, "name": {"en": "citrus greening (huanglongbing)", "hi": "संतरे का सिट्रस ग्रीनिंग (हुआंगलोंगबिंग)"}, "type": "insect_spread"},
-    {"label": "Peach___Bacterial_spot", "crop": "peach", "healthy": false, "name": {"en": "peach bacterial spot", "hi": "आड़ू का जीवाणु धब्बा"}, "type": "bacterial"},
-    {"label": "Peach___healthy", "crop": "peach", "healthy": true, "name": {"en": "healthy peach leaf", "hi": "स्वस्थ आड़ू की पत्ती"}, "type": "healthy"},
-    {"label": "Pepper___Bacterial_spot", "crop": "pepper_bell", "healthy": false, "name": {"en": "bell pepper bacterial spot", "hi": "शिमला मिर्च का जीवाणु धब्बा"}, "type": "bacterial"},
-    {"label": "Pepper___healthy", "crop": "pepper_bell", "healthy": true, "name": {"en": "healthy bell pepper leaf", "hi": "स्वस्थ शिमला मिर्च की पत्ती"}, "type": "healthy"},
-    {"label": "Potato___Early_blight", "crop": "potato", "healthy": false, "name": {"en": "potato early blight", "hi": "आलू का अगेती झुलसा (अर्ली ब्लाइट)"}, "type": "fungal"},
-    {"label": "Potato___Late_blight", "crop": "potato", "healthy": false, "name": {"en": "potato late blight", "hi": "आलू का पछेती झुलसा (लेट ब्लाइट)"}, "type": "fungal"},
-    {"label": "Potato___healthy", "crop": "potato", "healthy": true, "name": {"en": "healthy potato leaf", "hi": "स्वस्थ आलू की पत्ती"}, "type": "healthy"},
-    {"label": "Raspberry___healthy", "crop": "raspberry", "healthy": true, "name": {"en": "healthy raspberry leaf", "hi": "स्वस्थ रास्पबेरी की पत्ती"}, "type": "healthy"},
-    {"label": "Soybean___healthy", "crop": "soybean", "healthy": true, "name": {"en": "healthy soybean leaf", "hi": "स्वस्थ सोयाबीन की पत्ती"}, "type": "healthy"},
-    {"label": "Squash___Powdery_mildew", "crop": "squash", "healthy": false, "name": {"en": "squash powdery mildew", "hi": "स्क्वैश का चूर्णिल आसिता (पाउडरी मिल्ड्यू)"}, "type": "fungal"},
-    {"label": "Strawberry___Leaf_scorch", "crop": "strawberry", "healthy": false, "name": {"en": "strawberry leaf scorch", "hi": "स्ट्रॉबेरी का पत्ती झुलसन (लीफ स्कॉर्च)"}, "type": "fungal"},
-    {"label": "Strawberry___healthy", "crop": "strawberry", "healthy": true, "name": {"en": "healthy strawberry leaf", "hi": "स्वस्थ स्ट्रॉबेरी की पत्ती"}, "type": "healthy"},
-    {"label": "Tomato___Bacterial_spot", "crop": "tomato", "healthy": false, "name": {"en": "tomato bacterial spot", "hi": "टमाटर का जीवाणु धब्बा"}, "type": "bacterial"},
-    {"label": "Tomato___Early_blight", "crop": "tomato", "healthy": false, "name": {"en": "tomato early blight", "hi": "टमाटर का अगेती झुलसा (अर्ली ब्लाइट)"}, "type": "fungal"},
-    {"label": "Tomato___Late_blight", "crop": "tomato", "healthy": false, "name": {"en": "tomato late blight", "hi": "टमाटर का पछेती झुलसा (लेट ब्लाइट)"}, "type": "fungal"},
-    {"label": "Tomato___Leaf_Mold", "crop": "tomato", "healthy": false, "name": {"en": "tomato leaf mold", "hi": "टमाटर की पत्ती फफूंद (लीफ मोल्ड)"}, "type": "fungal"},
-    {"label": "Tomato___Septoria_leaf_spot", "crop": "tomato", "healthy": false, "name": {"en": "tomato Septoria leaf spot", "hi": "टमाटर का सेप्टोरिया पत्ती धब्बा"}, "type": "fungal"},
-    {"label": "Tomato___Spider_mites", "crop": "tomato", "healthy": false, "name": {"en": "spider mite damage on tomato", "hi": "टमाटर पर मकड़ी माइट (स्पाइडर माइट) का नुकसान"}, "type": "pest"},
-    {"label": "Tomato___Target_Spot", "crop": "tomato", "healthy": false, "name": {"en": "tomato target spot", "hi": "टमाटर का टारगेट स्पॉट"}, "type": "fungal"},
-    {"label": "Tomato___Yellow_Leaf_Curl_Virus", "crop": "tomato", "healthy": false, "name": {"en": "tomato yellow leaf curl virus", "hi": "टमाटर का पीला पत्ती मोड़क वायरस"}, "type": "insect_spread"},
-    {"label": "Tomato___Tomato_mosaic_virus", "crop": "tomato", "healthy": false, "name": {"en": "tomato mosaic virus", "hi": "टमाटर का मोज़ेक वायरस"}, "type": "viral"},
-    {"label": "Tomato___healthy", "crop": "tomato", "healthy": true, "name": {"en": "healthy tomato leaf", "hi": "स्वस्थ टमाटर की पत्ती"}, "type": "healthy"}
+    {
+      "label": "Apple___Apple_scab",
+      "crop": "apple",
+      "healthy": false,
+      "name": {
+        "en": "apple scab",
+        "hi": "सेब का स्कैब (पपड़ी रोग)",
+        "mr": "सफरचंद पपडी रोग",
+        "pa": "ਸੇਬ ਦੀ ਸਕੈਬ (ਪੱਤੀ ਦੀ ਬਿਮਾਰੀ)",
+        "bgc": "सेब की पपड़ी रोग (स्कैब)",
+        "bho": "सेब के पपड़ी रोग"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Apple___Black_rot",
+      "crop": "apple",
+      "healthy": false,
+      "name": {
+        "en": "apple black rot",
+        "hi": "सेब का काला सड़न",
+        "mr": "सफरचंदाचा काळा सड",
+        "pa": "ਸੇਬ ਦੀ ਕਾਲੀ ਸੜਨ",
+        "bgc": "सेब का काला सड़न",
+        "bho": "सेब के काला सड़न"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Apple___Cedar_apple_rust",
+      "crop": "apple",
+      "healthy": false,
+      "name": {
+        "en": "cedar apple rust",
+        "hi": "सेब का सीडर रस्ट (गेरुई)",
+        "mr": "सफरचंदाचा सिडर रस्ट (गेरुई)",
+        "pa": "ਸੇਬ ਦੀ ਸੀਡਰ ਰਸਟ (ਗੇਰੂਈ)",
+        "bgc": "सेब का सीडर रस्ट (गेरुई)",
+        "bho": "सेब के सीडर रस्ट (गेरुई)"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Apple___healthy",
+      "crop": "apple",
+      "healthy": true,
+      "name": {
+        "en": "healthy apple leaf",
+        "hi": "स्वस्थ सेब की पत्ती",
+        "mr": "निरोगी सफरचंदाची पान",
+        "pa": "ਸਿਹਤਮੰਦ ਸੇਬ ਦੀ ਪੱਤੀ",
+        "bgc": "स्वस्थ सेब की पत्ती",
+        "bho": "स्वस्थ सेब के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Blueberry___healthy",
+      "crop": "blueberry",
+      "healthy": true,
+      "name": {
+        "en": "healthy blueberry leaf",
+        "hi": "स्वस्थ ब्लूबेरी की पत्ती",
+        "mr": "निरोगी ब्लूबेरीची पान",
+        "pa": "ਸਿਹਤਮੰਦ ਬਲੂਬੈਰੀ ਦੀ ਪੱਤੀ",
+        "bgc": "स्वस्थ ब्लूबेरी की पत्ती",
+        "bho": "स्वस्थ ब्लूबेरी के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Cherry___Powdery_mildew",
+      "crop": "cherry",
+      "healthy": false,
+      "name": {
+        "en": "cherry powdery mildew",
+        "hi": "चेरी का चूर्णिल आसिता (पाउडरी मिल्ड्यू)",
+        "mr": "चेरीचा पावडरी बुरशी रोग",
+        "pa": "ਚੈਰੀ ਦੀ ਪਾਊਡਰੀ ਮਿਲਡਿਊ (ਚੂਰਨੀ ਫਫੂੰਦ)",
+        "bgc": "चेरी का पाउडरी मिल्ड्यू (चूर्णिल आसिता)",
+        "bho": "चेरी के पाउडरी मिल्ड्यू"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Cherry___healthy",
+      "crop": "cherry",
+      "healthy": true,
+      "name": {
+        "en": "healthy cherry leaf",
+        "hi": "स्वस्थ चेरी की पत्ती",
+        "mr": "निरोगी चेरीची पान",
+        "pa": "ਸਿਹਤਮੰਦ ਚੈਰੀ ਦੀ ਪੱਤੀ",
+        "bgc": "स्वस्थ चेरी की पत्ती",
+        "bho": "स्वस्थ चेरी के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Corn___Cercospora_leaf_spot",
+      "crop": "corn",
+      "healthy": false,
+      "name": {
+        "en": "maize Cercospora (gray) leaf spot",
+        "hi": "मक्का का सर्कोस्पोरा (धूसर) पत्ती धब्बा",
+        "mr": "मका सर्कोस्पोरा (धूसर) पान डाग",
+        "pa": "ਮੱਕੀ ਦੀ ਸਰਕੋਸਪੋਰਾ (ਸਲੇਟੀ) ਪੱਤੀ ਦਾ ਦਾਗ",
+        "bgc": "मक्का का सर्कोस्पोरा (धूसर) पत्ती धब्बा",
+        "bho": "मक्का के सर्कोस्पोरा (धूसर) पत्ती धब्बा"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Corn___Common_rust",
+      "crop": "corn",
+      "healthy": false,
+      "name": {
+        "en": "maize common rust",
+        "hi": "मक्का का सामान्य रतुआ",
+        "mr": "मका सामान्य रस्ट",
+        "pa": "ਮੱਕੀ ਦੀ ਆਮ ਰਸਟ",
+        "bgc": "मक्का का सामान्य रतुआ",
+        "bho": "मक्का के सामान्य रतुआ"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Corn___Northern_Leaf_Blight",
+      "crop": "corn",
+      "healthy": false,
+      "name": {
+        "en": "maize northern leaf blight",
+        "hi": "मक्का का उत्तरी पत्ती झुलसा",
+        "mr": "मका उत्तरी पान ब्लाइट",
+        "pa": "ਮੱਕੀ ਦੀ ਉੱਤਰੀ ਪੱਤੀ ਦੀ ਸੜਨ",
+        "bgc": "मक्का का उत्तरी पत्ती झुलसा",
+        "bho": "मक्का के उत्तरी पत्ती झुलसा"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Corn___healthy",
+      "crop": "corn",
+      "healthy": true,
+      "name": {
+        "en": "healthy maize leaf",
+        "hi": "स्वस्थ मक्का की पत्ती",
+        "mr": "निरोगी मका पान",
+        "pa": "ਸਿਹਤਮੰਦ ਮੱਕੀ ਦੀ ਪੱਤੀ",
+        "bgc": "स्वस्थ मक्का की पत्ती",
+        "bho": "स्वस्थ मक्का के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Grape___Black_rot",
+      "crop": "grape",
+      "healthy": false,
+      "name": {
+        "en": "grape black rot",
+        "hi": "अंगूर का काला सड़न",
+        "mr": "द्राक्षाचा काळा सड",
+        "pa": "ਅੰਗੂਰ ਦੀ ਕਾਲੀ ਸੜਨ",
+        "bgc": "अंगूर का काला सड़न",
+        "bho": "अंगूर के काला सड़न"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Grape___Esca_(Black_Measles)",
+      "crop": "grape",
+      "healthy": false,
+      "name": {
+        "en": "grape esca (black measles)",
+        "hi": "अंगूर का एस्का (ब्लैक मीज़ल्स)",
+        "mr": "अंगूर एस्का (ब्लॅक मेझल्स)",
+        "pa": "ਅੰਗੂਰ ਦੀ ਐਸਕਾ (ਬਲੈਕ ਮੀਜ਼ਲਸ)",
+        "bgc": "अंगूर का एस्का (ब्लैक मीज़ल्स)",
+        "bho": "अंगूर के एस्का (ब्लैक मीज़ल्स)"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Grape___Leaf_blight",
+      "crop": "grape",
+      "healthy": false,
+      "name": {
+        "en": "grape leaf blight",
+        "hi": "अंगूर का पत्ती झुलसा",
+        "mr": "अंगूराची पानाची झुलसा",
+        "pa": "ਅੰਗੂਰ ਦੀ ਪੱਤੀ ਦੀ ਸੜਨ",
+        "bgc": "अंगूर की पत्ती का झुलसा",
+        "bho": "अंगूर के पत्ती के झुलसा"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Grape___healthy",
+      "crop": "grape",
+      "healthy": true,
+      "name": {
+        "en": "healthy grape leaf",
+        "hi": "स्वस्थ अंगूर की पत्ती",
+        "mr": "आरोग्यदायी अंगूर पान",
+        "pa": "ਸਿਹਤਮੰਦ ਅੰਗੂਰ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक‑ठाक अंगूर की पत्ती",
+        "bho": "स्वस्थ अंगूर के पत्ती"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Orange___Haunglongbing",
+      "crop": "orange",
+      "healthy": false,
+      "name": {
+        "en": "citrus greening (huanglongbing)",
+        "hi": "संतरे का सिट्रस ग्रीनिंग (हुआंगलोंगबिंग)",
+        "mr": "सिट्रस ग्रीनिंग (हुआंगलॉन्गबिंग)",
+        "pa": "ਸਿਟਰਸ ਗ੍ਰੀਨਿੰਗ (ਹੁਆਂਗਲੋਂਗਬਿੰਗ)",
+        "bgc": "संतरा का सिट्रस ग्रीनिंग (हुआंगलोंगबिंग)",
+        "bho": "संतरा के सिट्रस ग्रीनिंग (हुआंगलोंगबिंग)"
+      },
+      "type": "insect_spread"
+    },
+    {
+      "label": "Peach___Bacterial_spot",
+      "crop": "peach",
+      "healthy": false,
+      "name": {
+        "en": "peach bacterial spot",
+        "hi": "आड़ू का जीवाणु धब्बा",
+        "mr": "आडूचा जीवाणु डाग",
+        "pa": "ਆੜੂ ਦੀ ਬੈਕਟੀਰੀਆ ਵਾਲੀ ਦਾਗ਼",
+        "bgc": "आड़ू का जीवाणु धब्बा",
+        "bho": "आड़ू के जीवाणु धब्बा"
+      },
+      "type": "bacterial"
+    },
+    {
+      "label": "Peach___healthy",
+      "crop": "peach",
+      "healthy": true,
+      "name": {
+        "en": "healthy peach leaf",
+        "hi": "स्वस्थ आड़ू की पत्ती",
+        "mr": "आरोग्यदायी आडू पान",
+        "pa": "ਸਿਹਤਮੰਦ ਆੜੂ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक‑ठाक आड़ू की पत्ती",
+        "bho": "स्वस्थ आड़ू के पत्ती"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Pepper___Bacterial_spot",
+      "crop": "pepper_bell",
+      "healthy": false,
+      "name": {
+        "en": "bell pepper bacterial spot",
+        "hi": "शिमला मिर्च का जीवाणु धब्बा",
+        "mr": "शिमला मिरचीचा जीवाणु डाग",
+        "pa": "ਸ਼ਿਮਲਾ ਮਿਰਚ ਦੀ ਬੈਕਟੀਰੀਆ ਵਾਲੀ ਦਾਗ਼",
+        "bgc": "शिमला मिर्च का जीवाणु धब्बा",
+        "bho": "शिमला मिर्च के जीवाणु धब्बा"
+      },
+      "type": "bacterial"
+    },
+    {
+      "label": "Pepper___healthy",
+      "crop": "pepper_bell",
+      "healthy": true,
+      "name": {
+        "en": "healthy bell pepper leaf",
+        "hi": "स्वस्थ शिमला मिर्च की पत्ती",
+        "mr": "आरोग्यदायी शिमला मिरची पान",
+        "pa": "ਸਿਹਤਮੰਦ ਸ਼ਿਮਲਾ ਮਿਰਚ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक‑ठाक शिमला मिर्च की पत्ती",
+        "bho": "स्वस्थ शिमला मिर्च के पत्ती"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Potato___Early_blight",
+      "crop": "potato",
+      "healthy": false,
+      "name": {
+        "en": "potato early blight",
+        "hi": "आलू का अगेती झुलसा (अर्ली ब्लाइट)",
+        "mr": "आलूचा लवकर झुलसा",
+        "pa": "ਆਲੂ ਦੀ ਸ਼ੁਰੂਆਤੀ ਬਲਾਈਟ",
+        "bgc": "आलू का अगेती झुलसा (अर्ली ब्लाइट)",
+        "bho": "आलू के अगेती झुलसा (अर्ली ब्लाइट)"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Potato___Late_blight",
+      "crop": "potato",
+      "healthy": false,
+      "name": {
+        "en": "potato late blight",
+        "hi": "आलू का पछेती झुलसा (लेट ब्लाइट)",
+        "mr": "आलूचा उशिराचा झुलसा",
+        "pa": "ਆਲੂ ਦੀ ਦੇਰ ਨਾਲ ਬਲਾਈਟ",
+        "bgc": "आलू का पछेती झुलसा (लेट ब्लाइट)",
+        "bho": "आलू के पछेती झुलसा (लेट ब्लाइट)"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Potato___healthy",
+      "crop": "potato",
+      "healthy": true,
+      "name": {
+        "en": "healthy potato leaf",
+        "hi": "स्वस्थ आलू की पत्ती",
+        "mr": "आरोग्यदायी बटाटा पान",
+        "pa": "ਸਿਹਤਮੰਦ ਆਲੂ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक‑ठाक आलू की पत्ती",
+        "bho": "स्वस्थ आलू के पत्ती"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Raspberry___healthy",
+      "crop": "raspberry",
+      "healthy": true,
+      "name": {
+        "en": "healthy raspberry leaf",
+        "hi": "स्वस्थ रास्पबेरी की पत्ती",
+        "mr": "आरोग्यदायी रास्पबेरी पान",
+        "pa": "ਸਿਹਤਮੰਦ ਰਾਸਪਬੈਰੀ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक‑ठाक रास्पबेरी की पत्ती",
+        "bho": "स्वस्थ रास्पबेरी के पत्ती"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Soybean___healthy",
+      "crop": "soybean",
+      "healthy": true,
+      "name": {
+        "en": "healthy soybean leaf",
+        "hi": "स्वस्थ सोयाबीन की पत्ती",
+        "mr": "आरोग्यदायी सोयाबीन पान",
+        "pa": "ਸਿਹਤਮੰਦ ਸੋਯਾਬੀਨ ਦੀ ਪੱਤੀ",
+        "bgc": "थारी सोयाबीन की पत्ती ठीक सै",
+        "bho": "ठीक सोयाबीन के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Squash___Powdery_mildew",
+      "crop": "squash",
+      "healthy": false,
+      "name": {
+        "en": "squash powdery mildew",
+        "hi": "स्क्वैश का चूर्णिल आसिता (पाउडरी मिल्ड्यू)",
+        "mr": "भोपळ्याची धूळ फफूंद",
+        "pa": "ਸਕੁਆਸ਼ ਦੀ ਪਾਊਡਰੀ ਫਫੂੰਦ",
+        "bgc": "स्क्वैश पे पाउडरी मिल्ड्यू लाग री सै",
+        "bho": "कद्दू के पाउडरी मिल्ड्यू"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Strawberry___Leaf_scorch",
+      "crop": "strawberry",
+      "healthy": false,
+      "name": {
+        "en": "strawberry leaf scorch",
+        "hi": "स्ट्रॉबेरी का पत्ती झुलसन (लीफ स्कॉर्च)",
+        "mr": "स्ट्रॉबेरी पान जळणे",
+        "pa": "ਸਟ੍ਰਾਬੈਰੀ ਦੀ ਪੱਤੀ ਸੜਨ",
+        "bgc": "स्ट्रॉबेरी की पत्ती जल्ली सै",
+        "bho": "स्ट्रॉबेरी के पत्ता के जलन"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Strawberry___healthy",
+      "crop": "strawberry",
+      "healthy": true,
+      "name": {
+        "en": "healthy strawberry leaf",
+        "hi": "स्वस्थ स्ट्रॉबेरी की पत्ती",
+        "mr": "आरोग्यदायी स्ट्रॉबेरी पान",
+        "pa": "ਸਿਹਤਮੰਦ ਸਟ੍ਰਾਬੈਰੀ ਦੀ ਪੱਤੀ",
+        "bgc": "थारी स्ट्रॉबेरी की पत्ती ठीक सै",
+        "bho": "ठीक स्ट्रॉबेरी के पत्ता"
+      },
+      "type": "healthy"
+    },
+    {
+      "label": "Tomato___Bacterial_spot",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato bacterial spot",
+        "hi": "टमाटर का जीवाणु धब्बा",
+        "mr": "टोमॅटो बॅक्टेरिया डाग",
+        "pa": "ਟਮਾਟਰ ਦੀ ਬੈਕਟੀਰੀਅਲ ਦਾਗ",
+        "bgc": "टमाटर पे जीवाणु धब्बा सै",
+        "bho": "टमाटर के बैक्टीरियल धब्बा"
+      },
+      "type": "bacterial"
+    },
+    {
+      "label": "Tomato___Early_blight",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato early blight",
+        "hi": "टमाटर का अगेती झुलसा (अर्ली ब्लाइट)",
+        "mr": "टोमॅटो लवकर ब्लाइट",
+        "pa": "ਟਮਾਟਰ ਦੀ ਸ਼ੁਰੂਆਤੀ ਬਲਾਈਟ",
+        "bgc": "टमाटर पे अगेती झुलसा सै",
+        "bho": "टमाटर के शुरुआती ब्लाइट"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Tomato___Late_blight",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato late blight",
+        "hi": "टमाटर का पछेती झुलसा (लेट ब्लाइट)",
+        "mr": "टोमॅटो उशिराचा ब्लाइट",
+        "pa": "ਟਮਾਟਰ ਦੀ ਦੇਰ ਨਾਲ ਬਲਾਈਟ",
+        "bgc": "टमाटर पे पछेती झुलसा सै",
+        "bho": "टमाटर के देर से ब्लाइट"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Tomato___Leaf_Mold",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato leaf mold",
+        "hi": "टमाटर की पत्ती फफूंद (लीफ मोल्ड)",
+        "mr": "टोमॅटो पान फफूंद",
+        "pa": "ਟਮਾਟਰ ਦੀ ਪੱਤੀ ਫਫੂੰਦ",
+        "bgc": "टमाटर की पत्ती पे फफूंद लाग री सै",
+        "bho": "टमाटर के पत्ता के फफूँद"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Tomato___Septoria_leaf_spot",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato Septoria leaf spot",
+        "hi": "टमाटर का सेप्टोरिया पत्ती धब्बा",
+        "mr": "टोमॅटो सेप्टोरिया पान डाग",
+        "pa": "ਟਮਾਟਰ ਦੀ ਸੈਪਟੋਰੀਆ ਪੱਤੀ ਦਾਗ",
+        "bgc": "टमाटर पे सेप्टोरिया पत्ती धब्बा सै",
+        "bho": "टमाटर के सेप्टोरिया पत्ता धब्बा"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Tomato___Spider_mites",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "spider mite damage on tomato",
+        "hi": "टमाटर पर मकड़ी माइट (स्पाइडर माइट) का नुकसान",
+        "mr": "टोमॅटोवर मकडी माइट नुकसान",
+        "pa": "ਟਮਾਟਰ ਉੱਤੇ ਮੱਕੀ ਮਾਈਟ ਦਾ ਨੁਕਸਾਨ",
+        "bgc": "टमाटर पे मकड़ी माइट का नुकसान सै",
+        "bho": "टमाटर पर मकड़ी माइट के नुकसान"
+      },
+      "type": "pest"
+    },
+    {
+      "label": "Tomato___Target_Spot",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato target spot",
+        "hi": "टमाटर का टारगेट स्पॉट",
+        "mr": "टोमॅटो टार्गेट डाग",
+        "pa": "ਟਮਾਟਰ ਦੀ ਟਾਰਗੇਟ ਦਾਗ",
+        "bgc": "टमाटर पे टारगेट स्पॉट सै",
+        "bho": "टमाटर के टारगेट स्पॉट"
+      },
+      "type": "fungal"
+    },
+    {
+      "label": "Tomato___Yellow_Leaf_Curl_Virus",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato yellow leaf curl virus",
+        "hi": "टमाटर का पीला पत्ती मोड़क वायरस",
+        "mr": "टोमॅटो पिवळा पान वाकवणारा व्हायरस",
+        "pa": "ਟਮਾਟਰ ਦੀ ਪੀਲੀ ਪੱਤੀ ਕਰਲ ਵਾਇਰਸ",
+        "bgc": "टमाटर पे पीली पत्ती कर्ल वायरस सै",
+        "bho": "टमाटर के पीला पत्ता कर्ल वायरस"
+      },
+      "type": "insect_spread"
+    },
+    {
+      "label": "Tomato___Tomato_mosaic_virus",
+      "crop": "tomato",
+      "healthy": false,
+      "name": {
+        "en": "tomato mosaic virus",
+        "hi": "टमाटर का मोज़ेक वायरस",
+        "mr": "टोमॅटो मोझेक व्हायरस",
+        "pa": "ਟਮਾਟਰ ਮੋਜ਼ੈਕ ਵਾਇਰਸ",
+        "bgc": "टमाटर का मोज़ेक वायरस",
+        "bho": "टमाटर के मोसेक वायरस"
+      },
+      "type": "viral"
+    },
+    {
+      "label": "Tomato___healthy",
+      "crop": "tomato",
+      "healthy": true,
+      "name": {
+        "en": "healthy tomato leaf",
+        "hi": "स्वस्थ टमाटर की पत्ती",
+        "mr": "आरोग्यदायी टोमॅटो पान",
+        "pa": "ਸਿਹਤਮੰਦ ਟਮਾਟਰ ਦੀ ਪੱਤੀ",
+        "bgc": "ठीक टमाटर की पत्ती",
+        "bho": "स्वस्थ टमाटर के पत्ता"
+      },
+      "type": "healthy"
+    }
   ]
 }

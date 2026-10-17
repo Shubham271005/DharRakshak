@@ -1,10 +1,60 @@
 {
   "_about": "Documents typically asked for each loan type (F5). This is a GENERAL checklist for guidance — exact requirements vary by bank and state, so the app always tells farmers to confirm with their bank. Order = display order.",
   "kcc": [
-    { "code": "id_proof", "name": { "en": "Identity proof", "hi": "पहचान पत्र" } },
-    { "code": "address_proof", "name": { "en": "Address proof", "hi": "पते का प्रमाण" } },
-    { "code": "bank_passbook", "name": { "en": "Bank passbook copy", "hi": "बैंक पासबुक की कॉपी" } },
-    { "code": "land_record", "name": { "en": "Land record copy", "hi": "ज़मीन के रिकॉर्ड की कॉपी" } },
-    { "code": "passport_photo", "name": { "en": "Passport-size photo", "hi": "पासपोर्ट साइज़ फोटो" } }
+    {
+      "code": "id_proof",
+      "name": {
+        "en": "Identity proof",
+        "hi": "पहचान पत्र",
+        "mr": "ओळखपत्र",
+        "pa": "ਪਛਾਣ ਪੱਤਰ",
+        "bgc": "पहचान पत्र",
+        "bho": "पहिचान पत्र"
+      }
+    },
+    {
+      "code": "address_proof",
+      "name": {
+        "en": "Address proof",
+        "hi": "पते का प्रमाण",
+        "mr": "पत्त्याचा पुरावा",
+        "pa": "ਪਤੇ ਦਾ ਪ੍ਰਮਾਣ",
+        "bgc": "पते का प्रमाण",
+        "bho": "पता के प्रमाण"
+      }
+    },
+    {
+      "code": "bank_passbook",
+      "name": {
+        "en": "Bank passbook copy",
+        "hi": "बैंक पासबुक की कॉपी",
+        "mr": "बँकेची पासबुकची प्रत",
+        "pa": "ਬੈਂਕ ਪਾਸਬੁੱਕ ਦੀ ਕਾਪੀ",
+        "bgc": "बैंक पासबुक की कॉपी",
+        "bho": "बैंक पासबुक के कॉपी"
+      }
+    },
+    {
+      "code": "land_record",
+      "name": {
+        "en": "Land record copy",
+        "hi": "ज़मीन के रिकॉर्ड की कॉपी",
+        "mr": "जमिनीचा रेकॉर्ड प्रत",
+        "pa": "ਜ਼ਮੀਨ ਦੇ ਰਿਕਾਰਡ ਦੀ ਕਾਪੀ",
+        "bgc": "जमीन के रेकॉर्ड की कॉपी",
+        "bho": "जमीन के रेकॉर्ड के कॉपी"
+      }
+    },
+    {
+      "code": "passport_photo",
+      "name": {
+        "en": "Passport-size photo",
+        "hi": "पासपोर्ट साइज़ फोटो",
+        "mr": "पासपोर्ट आकाराची फोटो",
+        "pa": "ਪਾਸਪੋਰਟ-ਸਾਈਜ਼ ਫੋਟੋ",
+        "bgc": "पासपोर्ट साइज फोटो",
+        "bho": "पासपोर्ट साइज फोटो"
+      }
+    }
   ]
 }

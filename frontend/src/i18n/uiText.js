@@ -1,17 +1,15 @@
-// UI labels in every supported language (Component 8).
+// UI labels in every supported language.
 //
-// The text lives in shared/i18n/en.json and shared/i18n/hi.json so it can
-// be reviewed (and translated) in one place. To add a label: add the same
-// key to BOTH files, then use t('your_key') via useLanguage().
-// tests/test_i18n.py fails if a key is missing from either file or if the
-// frontend uses a key that doesn't exist.
-import en from '../../../shared/i18n/en.json'
-import hi from '../../../shared/i18n/hi.json'
+// The text lives in shared/i18n/<lang>.json. To add a label: add the key to
+// en.json and hi.json, then run `python scripts/translate_content.py` to
+// fill in Marathi, Punjabi, Haryanvi and Bhojpuri. tests/test_i18n.py checks
+// that every language has every key the frontend uses.
+//
+// Files are discovered automatically, so a language file that doesn't exist
+// yet simply falls back (see languages.js) instead of breaking the build.
+const files = import.meta.glob('../../../shared/i18n/*.json', { eager: true, import: 'default' })
 
-const SOURCES = { en, hi }
-
+/** { en: {key: text}, hi: {...}, mr: {...}, ... } */
 export const UI_TEXT = Object.fromEntries(
-  Object.keys(en)
-    .filter((key) => !key.startsWith('_'))
-    .map((key) => [key, Object.fromEntries(Object.entries(SOURCES).map(([lang, texts]) => [lang, texts[key]]))]),
+  Object.entries(files).map(([path, texts]) => [path.split('/').pop().replace('.json', ''), texts]),
 )

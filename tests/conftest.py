@@ -33,7 +33,7 @@ class FakeClassifier:
         self.top_index = top_index
         self.confidence = confidence
 
-    def classify(self, image_bytes: bytes) -> clf.ClassifierOutput:
+    def classify(self, image_bytes: bytes, registered_crop: str | None = None) -> clf.ClassifierOutput:
         if not image_bytes.startswith(PNG_SIGNATURE):
             raise clf.InvalidImage("The file could not be read as an image.")
         indices = [self.top_index, (self.top_index + 1) % 38, (self.top_index + 2) % 38]
@@ -41,6 +41,8 @@ class FakeClassifier:
         confs = [self.confidence, self.confidence * 0.2, self.confidence * 0.1]
         top = self.labels[self.top_index]
         uncertain = self.confidence < clf.UNCERTAIN_THRESHOLD
+        # Like the real classifier: a photo of another crop = mismatch warning.
+        mismatch = registered_crop is not None and top.crop != registered_crop and not uncertain
         return clf.ClassifierOutput(
             predictions=[
                 Prediction(label=self.labels[i].label, display_name=clf.display_name(self.labels[i]), confidence=c)
@@ -49,6 +51,7 @@ class FakeClassifier:
             top=top,
             uncertain=uncertain,
             uncertainty_message=clf.UNCERTAIN_MESSAGE if uncertain else None,
+            crop_mismatch=mismatch,
         )
 
 

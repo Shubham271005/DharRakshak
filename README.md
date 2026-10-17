@@ -2,25 +2,25 @@
 
 *From crop symptoms to smarter farming decisions.*
 
-DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a leaf. The app identifies **possible** problems with a pretrained image model, combines that with **real local weather** and the crop's growth stage, and gives a **risk estimate**, **ranked next steps** and a plain-language **"Why?"**. Everything is in English or Hindi. It also tracks **loan documents** (sample data) and has a **multilingual chatbot you can talk to**.
+DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a leaf. The app identifies **possible** problems with an image model tuned for real field photos, combines that with **real local weather** and the crop's growth stage, and gives a **risk estimate**, **ranked next steps** and a plain-language **"Why?"**. It works in **English, Hindi, Marathi, Punjabi, Haryanvi and Bhojpuri**. It also tracks **loan documents** (sample data) and has a **multilingual chatbot you can talk to**.
 
 ## Features
 
 | | Feature | How |
 |---|---|---|
-| F1 | Leaf symptom analysis | MobileNetV2 (PlantVillage, 38 classes, 14 crops) → top-3 possibilities with confidence |
+| F1 | Leaf symptom analysis | MobileNetV2 chosen by evaluation on **real field photos** (60% top-1 / 85% top-3, against 12% before), crop-aware ranking, quality checks, honest uncertainty. See the [model card](docs/MODEL_CARD.md). |
 | F2 | Crop profile + action cards | Saved profile, 3 ranked safe next steps |
 | F3 | Context-aware risk | Rules combining the photo, Open-Meteo weather and crop stage → low / moderate / elevated (estimate) |
 | F4 | Explainability | Every point in the risk score has a reason sentence, plus a "verify" line |
 | F5 | Finance & loans | Loan status, repayments, document checklist you can tick, schemes. **Mock data, no bank integration** |
-| F6 | Languages | English + Hindi everywhere (UI, cards, alerts, chat) |
-| F7 | Chatbot + voice | Groq LLM grounded in the farmer's data. Speak your question (Groq Whisper) and hear the answer (browser voice) |
+| F6 | Languages | English, हिंदी, मराठी, ਪੰਜਾਬੀ, हरियाणवी, भोजपुरी everywhere: UI, predictions, risk, cards, explanations, finance, chat. Fixed text is translated into reviewable JSON, and the chatbot answers live in the chosen language. |
+| F7 | Chatbot + voice | Groq LLM grounded in the farmer's data. Push-to-talk: Groq Whisper speech-to-text (en/hi/mr/pa; Haryanvi and Bhojpuri via Hindi), answers read aloud with the device's voice for that language |
 
 ## Tech stack
 
 - **Backend:** Python 3.11+, FastAPI, SQLite, PyTorch (CPU)
 - **Frontend:** React 19, Vite, Tailwind CSS v4
-- **AI:** MobileNetV2 plant-disease classifier ([model card](docs/MODEL_CARD.md)), transparent decision rules ([rules](docs/DECISION_RULES.md)), Groq `openai/gpt-oss-120b` (fallback `qwen/qwen3.8-27b`) for chat, `whisper-large-v3` for speech-to-text
+- **AI:** MobileNetV2 plant-disease classifier via Hugging Face `transformers` + OpenCV preprocessing ([model card](docs/MODEL_CARD.md)), transparent decision rules ([rules](docs/DECISION_RULES.md)), Groq `openai/gpt-oss-120b` (fallback `qwen/qwen3.8-27b`) for chat and translation, `whisper-large-v3` for speech-to-text
 - **Data:** Open-Meteo weather and geocoding (free, no key). Loan data is sample data only.
 
 ---
@@ -79,6 +79,9 @@ The sidebar shows **Connected to server** when the frontend can reach the backen
 | `pytest` | Runs all backend tests (500+). No network or API key needed. |
 | `python scripts/reset_db.py` | Wipes the database back to the demo farmer. Do this before the demo. |
 | `python scripts/try_model.py photo.jpg` | Tries the image model on photos |
+| `python scripts/fetch_field_images.py` + `python scripts/eval_model.py` | Measures accuracy on real field photos (PlantDoc), exactly as the app runs |
+| `python scripts/eval_pipeline.py` | Compares models × preprocessing settings |
+| `python scripts/translate_content.py` | Fills in Marathi, Punjabi, Haryanvi and Bhojpuri for any new text (uses Groq) |
 | `python scripts/fetch_eval_images.py` + `python scripts/eval_model.py` | Measures model accuracy on labelled test photos |
 | `python scripts/check_sample_data.py` | Checks the sample data matches the data contract |
 

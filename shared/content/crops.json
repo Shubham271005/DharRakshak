@@ -1,26 +1,159 @@
 {
   "_about": "Display names for crops and growth stages (EN/HI), used by the backend engines. Crop keys match labels.json; stage keys match CropStage in shared/contract.py. frontend/src/lib/labels.js holds the same names for the UI (Component 8 merges them into one source).",
   "crops": {
-    "tomato": { "en": "tomato", "hi": "टमाटर" },
-    "potato": { "en": "potato", "hi": "आलू" },
-    "corn": { "en": "maize", "hi": "मक्का" },
-    "pepper_bell": { "en": "bell pepper", "hi": "शिमला मिर्च" },
-    "soybean": { "en": "soybean", "hi": "सोयाबीन" },
-    "grape": { "en": "grape", "hi": "अंगूर" },
-    "apple": { "en": "apple", "hi": "सेब" },
-    "orange": { "en": "orange", "hi": "संतरा" },
-    "peach": { "en": "peach", "hi": "आड़ू" },
-    "cherry": { "en": "cherry", "hi": "चेरी" },
-    "strawberry": { "en": "strawberry", "hi": "स्ट्रॉबेरी" },
-    "squash": { "en": "squash", "hi": "स्क्वैश" },
-    "blueberry": { "en": "blueberry", "hi": "ब्लूबेरी" },
-    "raspberry": { "en": "raspberry", "hi": "रास्पबेरी" }
+    "tomato": {
+      "en": "tomato",
+      "hi": "टमाटर",
+      "mr": "टोमॅटो",
+      "pa": "ਟਮਾਟਰ",
+      "bgc": "टमाटर",
+      "bho": "टमाटर"
+    },
+    "potato": {
+      "en": "potato",
+      "hi": "आलू",
+      "mr": "बटाटा",
+      "pa": "ਆਲੂ",
+      "bgc": "आलू",
+      "bho": "आलू"
+    },
+    "corn": {
+      "en": "maize",
+      "hi": "मक्का",
+      "mr": "मका",
+      "pa": "ਮੱਕੀ",
+      "bgc": "मक्का",
+      "bho": "मक्का"
+    },
+    "pepper_bell": {
+      "en": "bell pepper",
+      "hi": "शिमला मिर्च",
+      "mr": "शिमला मिरची",
+      "pa": "ਸ਼ਿਮਲਾ ਮਿਰਚ",
+      "bgc": "शिमला मिर्च",
+      "bho": "शिमला मिर्च"
+    },
+    "soybean": {
+      "en": "soybean",
+      "hi": "सोयाबीन",
+      "mr": "सोयाबीन",
+      "pa": "ਸੋਇਆ ਬੀਨ",
+      "bgc": "सोयाबीन",
+      "bho": "सोयाबीन"
+    },
+    "grape": {
+      "en": "grape",
+      "hi": "अंगूर",
+      "mr": "द्राक्ष",
+      "pa": "ਅੰਗੂਰ",
+      "bgc": "अंगूर",
+      "bho": "अंगूर"
+    },
+    "apple": {
+      "en": "apple",
+      "hi": "सेब",
+      "mr": "सफरचंद",
+      "pa": "ਸੇਬ",
+      "bgc": "सेब",
+      "bho": "सेब"
+    },
+    "orange": {
+      "en": "orange",
+      "hi": "संतरा",
+      "mr": "संत्रा",
+      "pa": "ਸੰਤਰਾ",
+      "bgc": "संतरा",
+      "bho": "संतरा"
+    },
+    "peach": {
+      "en": "peach",
+      "hi": "आड़ू",
+      "mr": "आडू",
+      "pa": "ਆੜੂ",
+      "bgc": "आड़ू",
+      "bho": "आड़ू"
+    },
+    "cherry": {
+      "en": "cherry",
+      "hi": "चेरी",
+      "mr": "चेरी",
+      "pa": "ਚੈਰੀ",
+      "bgc": "चेरी",
+      "bho": "चेरी"
+    },
+    "strawberry": {
+      "en": "strawberry",
+      "hi": "स्ट्रॉबेरी",
+      "mr": "स्ट्रॉबेरी",
+      "pa": "ਸਟ੍ਰਾਬੈਰੀ",
+      "bgc": "स्ट्रॉबेरी",
+      "bho": "स्ट्रॉबेरी"
+    },
+    "squash": {
+      "en": "squash",
+      "hi": "स्क्वैश",
+      "mr": "स्क्वॅश",
+      "pa": "ਸਕੁਆਸ਼",
+      "bgc": "स्क्वैश",
+      "bho": "स्क्वैश"
+    },
+    "blueberry": {
+      "en": "blueberry",
+      "hi": "ब्लूबेरी",
+      "mr": "ब्लूबेरी",
+      "pa": "ਬਲੂਬੈਰੀ",
+      "bgc": "ब्लूबेरी",
+      "bho": "ब्लूबेरी"
+    },
+    "raspberry": {
+      "en": "raspberry",
+      "hi": "रास्पबेरी",
+      "mr": "रास्पबेरी",
+      "pa": "ਰਾਸਪਬੈਰੀ",
+      "bgc": "रास्पबेरी",
+      "bho": "रास्पबेरी"
+    }
   },
   "stages": {
-    "seedling": { "en": "seedling", "hi": "पौध" },
-    "vegetative": { "en": "vegetative growth", "hi": "बढ़वार" },
-    "flowering": { "en": "flowering", "hi": "फूल आने की" },
-    "fruiting": { "en": "fruiting", "hi": "फल लगने की" },
-    "maturity": { "en": "maturity", "hi": "पकने की" }
+    "seedling": {
+      "en": "seedling",
+      "hi": "पौध",
+      "mr": "अंकुर",
+      "pa": "ਪੌਧਾ",
+      "bgc": "पौध",
+      "bho": "पौध"
+    },
+    "vegetative": {
+      "en": "vegetative growth",
+      "hi": "बढ़वार",
+      "mr": "वाढ",
+      "pa": "ਵਧਣ",
+      "bgc": "बढ़वार",
+      "bho": "बढ़वार"
+    },
+    "flowering": {
+      "en": "flowering",
+      "hi": "फूल आने की",
+      "mr": "फुलणं",
+      "pa": "ਫੁੱਲ ਆਉਣਾ",
+      "bgc": "फूल आवे सै",
+      "bho": "फूल आवे के"
+    },
+    "fruiting": {
+      "en": "fruiting",
+      "hi": "फल लगने की",
+      "mr": "फळ लागणं",
+      "pa": "ਫਲ ਲੱਗਣਾ",
+      "bgc": "फल लागे सै",
+      "bho": "फल लगला के"
+    },
+    "maturity": {
+      "en": "maturity",
+      "hi": "पकने की",
+      "mr": "पिकणं",
+      "pa": "ਪੱਕਣਾ",
+      "bgc": "पकाण की",
+      "bho": "पकला के"
+    }
   }
 }

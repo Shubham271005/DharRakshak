@@ -18,7 +18,6 @@
     "expected_harvest_end": "2026-11-30",
     "yield_estimate": null
   },
-
   "analysis": {
     "analysis_id": "an-demo-001",
     "crop_id": "crop-demo-001",
@@ -27,17 +26,38 @@
     "predictions": [
       {
         "label": "Tomato___Early_blight",
-        "display_name": { "en": "Possible early blight", "hi": "संभावित अगेती झुलसा (अर्ली ब्लाइट)" },
+        "display_name": {
+          "en": "Possible early blight",
+          "hi": "संभावित अगेती झुलसा (अर्ली ब्लाइट)",
+          "mr": "संभाव्य लवकर पान जळजळ",
+          "pa": "ਸੰਭਾਵੀ ਐਰਲੀ ਬਲਾਈਟ",
+          "bgc": "संभावित अर्ली ब्लाइट",
+          "bho": "संभावित अर्ली ब्लाइट (पहिले के झुलसा)"
+        },
         "confidence": 0.68
       },
       {
         "label": "Tomato___Septoria_leaf_spot",
-        "display_name": { "en": "Possible Septoria leaf spot", "hi": "संभावित सेप्टोरिया पत्ती धब्बा" },
+        "display_name": {
+          "en": "Possible Septoria leaf spot",
+          "hi": "संभावित सेप्टोरिया पत्ती धब्बा",
+          "mr": "संभाव्य सेप्टोरिया पान डाग",
+          "pa": "ਸੰਭਾਵੀ ਸੈਪਟੋਰੀਆ ਪੱਤੇ ਦਾ ਦਾਗ",
+          "bgc": "संभावित सेप्टोरिया पत्ती धब्बा",
+          "bho": "संभावित सेप्टोरिया पत्ती के धब्बा"
+        },
         "confidence": 0.19
       },
       {
         "label": "other",
-        "display_name": { "en": "Other / uncertain", "hi": "अन्य / अनिश्चित" },
+        "display_name": {
+          "en": "Other / uncertain",
+          "hi": "अन्य / अनिश्चित",
+          "mr": "इतर / अनिश्चित",
+          "pa": "ਹੋਰ / ਅਨਿਸ਼ਚਿਤ",
+          "bgc": "और / अनिश्चित",
+          "bho": "दूसर / अनिश्चित"
+        },
         "confidence": 0.13
       }
     ],
@@ -51,7 +71,11 @@
       "avg_temp_c": 26.4,
       "summary": {
         "en": "Wet weather for the last 3 days (mock data).",
-        "hi": "पिछले 3 दिनों से नम मौसम (नमूना डेटा)।"
+        "hi": "पिछले 3 दिनों से नम मौसम (नमूना डेटा)।",
+        "mr": "गेल्या 3 दिवसांत ओले हवामान (नमुना डेटा).",
+        "pa": "ਪਿਛਲੇ 3 ਦਿਨਾਂ ਤੋਂ ਗਿੱਲਾ ਮੌਸਮ (ਮੌਕ ਡਾਟਾ)।",
+        "bgc": "पिछले 3 दिनां तै नम मौसम सै (मॉक डेटा)।",
+        "bho": "पिछला 3 दिन से गीला मौसम (नकली डेटा)।"
       }
     },
     "risk": {
@@ -64,7 +88,11 @@
           "points": 3,
           "text": {
             "en": "The image shows suspicious leaf spots.",
-            "hi": "तस्वीर में पत्तियों पर संदिग्ध धब्बे दिख रहे हैं।"
+            "hi": "तस्वीर में पत्तियों पर संदिग्ध धब्बे दिख रहे हैं।",
+            "mr": "चित्रात पानांवर संशयास्पद डाग दिसत आहेत.",
+            "pa": "ਤਸਵੀਰ ਵਿੱਚ ਪੱਤਿਆਂ ’ਤੇ ਸ਼ੱਕੀ ਦਾਗ ਦਿਖ ਰਹੇ ਹਨ।",
+            "bgc": "फोटो में पत्तियां पे शंका वाले धब्बे दिख रे सैं।",
+            "bho": "तस्वीर में पत्ता पर संदेहजनक धब्बा देखात बा।"
           }
         },
         {
@@ -72,7 +100,11 @@
           "points": 3,
           "text": {
             "en": "Recent wet, humid weather may favor some fungal diseases.",
-            "hi": "हाल का नम मौसम कुछ फफूंद रोगों को बढ़ावा दे सकता है।"
+            "hi": "हाल का नम मौसम कुछ फफूंद रोगों को बढ़ावा दे सकता है।",
+            "mr": "अलीकडचा ओला, ओलसर हवामान काही बुरशी रोगांना वाढवू शकतो.",
+            "pa": "ਹਾਲ ਹੀ ਦਾ ਗਿੱਲਾ, ਨਮੀ ਵਾਲਾ ਮੌਸਮ ਕੁਝ ਫਫੂੰਦ ਵਾਲੇ ਰੋਗਾਂ ਨੂੰ ਵਧਾ ਸਕਦਾ ਹੈ।",
+            "bgc": "हाल में नम, नमीयुक्त मौसम कुछ फफूंद रोगां ने बढ़ावा दे सके सै।",
+            "bho": "हाल के गीला, नम मौसम कुछ फफूंद रोगन के बढ़ावा दे सकेला।"
           }
         },
         {
@@ -80,7 +112,11 @@
           "points": 1,
           "text": {
             "en": "The crop is at the flowering stage.",
-            "hi": "फसल फूल आने की अवस्था में है।"
+            "hi": "फसल फूल आने की अवस्था में है।",
+            "mr": "पिक फुलण्याच्या टप्प्यात आहे.",
+            "pa": "ਫਸਲ ਫੁੱਲਣ ਦੇ ਪੜਾਅ ’ਤੇ ਹੈ।",
+            "bgc": "फसल फूलां की अवस्था में सै।",
+            "bho": "फसल फूल के चरण में बा।"
           }
         }
       ]
@@ -89,62 +125,111 @@
       {
         "card_id": "inspect_nearby",
         "priority": 1,
-        "title": { "en": "Inspect nearby plants", "hi": "आस-पास के पौधे जाँचें" },
+        "title": {
+          "en": "Inspect nearby plants",
+          "hi": "आस-पास के पौधे जाँचें",
+          "mr": "जवळचे झाडे तपासा",
+          "pa": "ਨੇੜਲੇ ਪੌਦੇ ਜਾਂਚੋ",
+          "bgc": "नजदीकी पौध्यां ने देख लेओ।",
+          "bho": "नजदीकी पौधा देखीं"
+        },
         "detail": {
           "en": "Check neighboring plants for similar spots today.",
-          "hi": "आज ही आस-पास के पौधों में ऐसे ही धब्बे देखें।"
+          "hi": "आज ही आस-पास के पौधों में ऐसे ही धब्बे देखें।",
+          "mr": "आजच जवळच्या झाडांमध्ये समान डाग आहेत का ते पहा.",
+          "pa": "ਅੱਜ ਨੇੜਲੇ ਪੌਦਿਆਂ ਵਿੱਚ ਐਸੇ ਹੀ ਦਾਗ ਵੇਖੋ।",
+          "bgc": "आज ही नजदीकी पौध्यां में एड़े धब्बे देख लेओ।",
+          "bho": "आजु नजदीकी पौधन में एही तरह के धब्बा देखीं।"
         },
         "why": {
           "en": "Spots on one plant can spread; checking early shows how widespread the problem is.",
-          "hi": "एक पौधे के धब्बे फैल सकते हैं; जल्दी जाँच से पता चलता है कि समस्या कितनी फैली है।"
+          "hi": "एक पौधे के धब्बे फैल सकते हैं; जल्दी जाँच से पता चलता है कि समस्या कितनी फैली है।",
+          "mr": "एका झाडावरचे डाग पसरू शकतात; लवकर तपासल्यास समस्या किती पसरली आहे हे कळते.",
+          "pa": "ਇੱਕ ਪੌਦੇ ਉੱਤੇ ਦਾਗ ਫੈਲ ਸਕਦੇ ਹਨ; ਜਲਦੀ ਜਾਂਚ ਕਰਨ ਨਾਲ ਪਤਾ ਲੱਗਦਾ ਹੈ ਕਿ ਸਮੱਸਿਆ ਕਿੰਨੀ ਫੈਲੀ ਹੈ।",
+          "bgc": "एक पौधे पे धब्बे फैल सकें सै; जल्दी जाँच करन तै पता लागे सै के समस्या कितनी फैली सै."
         }
       },
       {
         "card_id": "check_local_guidance",
         "priority": 2,
-        "title": { "en": "Check local guidance", "hi": "स्थानीय सलाह लें" },
+        "title": {
+          "en": "Check local guidance",
+          "hi": "स्थानीय सलाह लें",
+          "mr": "स्थानिक मार्गदर्शन घ्या",
+          "pa": "ਸਥਾਨਕ ਸਲਾਹ ਲਓ",
+          "bgc": "स्थानीय सलाह ले"
+        },
         "detail": {
           "en": "Confirm with your local agriculture extension office before any treatment.",
-          "hi": "कोई भी उपचार करने से पहले अपने स्थानीय कृषि विस्तार कार्यालय से पुष्टि करें।"
+          "hi": "कोई भी उपचार करने से पहले अपने स्थानीय कृषि विस्तार कार्यालय से पुष्टि करें।",
+          "mr": "कोणतेही उपचार करण्यापूर्वी आपल्या स्थानिक कृषी विस्तार कार्यालयाशी पुष्टी करा.",
+          "pa": "ਕੋਈ ਵੀ ਇਲਾਜ਼ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਆਪਣੇ ਸਥਾਨਕ ਖੇਤੀ ਵਿਸਤਾਰ ਦਫ਼ਤਰ ਨਾਲ ਪੁਸ਼ਟੀ ਕਰੋ।",
+          "bgc": "कोई भी उपचार करन तै पहले थारे स्थानीय कृषि विस्तार दफ्तर तै पक्का कर ले."
         },
         "why": {
           "en": "The model's result is a possibility, not a confirmed diagnosis.",
-          "hi": "मॉडल का परिणाम एक संभावना है, पक्का निदान नहीं।"
+          "hi": "मॉडल का परिणाम एक संभावना है, पक्का निदान नहीं।",
+          "mr": "मॉडेलचा परिणाम फक्त एक शक्यता आहे, निश्चित निदान नाही.",
+          "pa": "ਮਾਡਲ ਦਾ ਨਤੀਜਾ ਇੱਕ ਸੰਭਾਵਨਾ ਹੈ, ਪੱਕਾ ਨਿਦਾਨ ਨਹੀਂ।",
+          "bgc": "मॉडल का नतीजा एक संभावना सै, पक्का निदान कोनी."
         }
       },
       {
         "card_id": "monitor_weather",
         "priority": 3,
-        "title": { "en": "Monitor the weather", "hi": "मौसम पर नज़र रखें" },
+        "title": {
+          "en": "Monitor the weather",
+          "hi": "मौसम पर नज़र रखें",
+          "mr": "हवामानावर लक्ष ठेवा",
+          "pa": "ਮੌਸਮ ਉੱਤੇ ਨਜ਼ਰ ਰੱਖੋ",
+          "bgc": "मौसम पे नज़र रख"
+        },
         "detail": {
           "en": "Watch for continued rain or high humidity this week.",
-          "hi": "इस हफ्ते लगातार बारिश या ज़्यादा नमी पर ध्यान दें।"
+          "hi": "इस हफ्ते लगातार बारिश या ज़्यादा नमी पर ध्यान दें।",
+          "mr": "या आठवड्यात सतत पाऊस किंवा जास्त आर्द्रता आहे का ते पहा.",
+          "pa": "ਇਸ ਹਫ਼ਤੇ ਲਗਾਤਾਰ ਵਰਖਾ ਜਾਂ ਵੱਧ ਨਮੀ ਉੱਤੇ ਧਿਆਨ ਦਿਓ।",
+          "bgc": "इब्ब के हफ्ते लगातार बारिश या ज़्यादा नमी पे ध्यान दे."
         },
         "why": {
           "en": "Continued wet conditions can increase disease risk.",
-          "hi": "लगातार नम मौसम से रोग का खतरा बढ़ सकता है।"
+          "hi": "लगातार नम मौसम से रोग का खतरा बढ़ सकता है।",
+          "mr": "सतत ओले हवामानामुळे रोगाचा धोका वाढू शकतो.",
+          "pa": "ਲਗਾਤਾਰ ਗਿੱਲਾ ਮੌਸਮ ਰੋਗ ਦੇ ਖਤਰੇ ਨੂੰ ਵਧਾ ਸਕਦਾ ਹੈ।",
+          "bgc": "लगातार गीला मौसम रोग का खतरा बढ़ा सके सै."
         }
       }
     ],
     "explanation": {
       "summary": {
         "en": "Inspection is prioritized because the image shows suspicious leaf spots and the recent wet conditions may favor some plant diseases.",
-        "hi": "जाँच को प्राथमिकता दी गई है क्योंकि तस्वीर में संदिग्ध धब्बे हैं और हाल का नम मौसम कुछ पौधों के रोगों को बढ़ावा दे सकता है।"
+        "hi": "जाँच को प्राथमिकता दी गई है क्योंकि तस्वीर में संदिग्ध धब्बे हैं और हाल का नम मौसम कुछ पौधों के रोगों को बढ़ावा दे सकता है।",
+        "mr": "छायाचित्रात संशयास्पद पानांचे डाग दिसत असल्याने आणि अलीकडील ओले हवामानामुळे काही वनस्पती रोग वाढू शकतात, त्यामुळे तपासणीला प्राधान्य दिले आहे.",
+        "pa": "ਜਾਂਚ ਨੂੰ ਤਰਜੀਹ ਦਿੱਤੀ ਗਈ ਹੈ ਕਿਉਂਕਿ ਤਸਵੀਰ ਵਿੱਚ ਸ਼ੱਕੀ ਪੱਤੇ ਦੇ ਦਾਗ ਹਨ ਅਤੇ ਹਾਲੀਆ ਗਿੱਲਾ ਮੌਸਮ ਕੁਝ ਪੌਦੇ ਦੇ ਰੋਗਾਂ ਨੂੰ ਵਧਾ ਸਕਦਾ ਹੈ।",
+        "bgc": "जाँच ने प्राथमिकता दी गई सै क्यूँकि फोटो में संदिग्ध धब्बे दिख रे सैं और हाल का गीला मौसम कुछ पौधों के रोगां ने बढ़ावा दे सके सै."
       },
       "verify": {
         "en": "This is not a confirmed diagnosis. Check nearby plants and confirm with local experts.",
-        "hi": "यह पक्का निदान नहीं है। आस-पास के पौधे जाँचें और स्थानीय विशेषज्ञों से पुष्टि करें।"
+        "hi": "यह पक्का निदान नहीं है। आस-पास के पौधे जाँचें और स्थानीय विशेषज्ञों से पुष्टि करें।",
+        "mr": "हे निश्चित निदान नाही. आजूबाजूचे झाडे तपासा आणि स्थानिक तज्ञांशी पुष्टी करा.",
+        "pa": "ਇਹ ਪੱਕਾ ਨਿਦਾਨ ਨਹੀਂ ਹੈ। ਨੇੜਲੇ ਪੌਦੇ ਜਾਂਚੋ ਅਤੇ ਸਥਾਨਕ ਵਿਸ਼ੇਸ਼ਗਿਆਨਾਂ ਨਾਲ ਪੁਸ਼ਟੀ ਕਰੋ।",
+        "bgc": "इब्ब पक्का निदान कोनी. पास के पौध्यां ने जाँच ले और स्थानीय माहिरां तै पक्का कर ले."
       }
     }
   },
-
   "loan_summary": {
     "data_source": "mock",
     "crop_id": "crop-demo-001",
     "loan": {
       "loan_id": "loan-demo-001",
       "loan_type": "kcc",
-      "display_name": { "en": "Kisan Credit Card loan (sample)", "hi": "किसान क्रेडिट कार्ड लोन (नमूना)" },
+      "display_name": {
+        "en": "Kisan Credit Card loan (sample)",
+        "hi": "किसान क्रेडिट कार्ड लोन (नमूना)",
+        "mr": "किसान क्रेडिट कार्ड कर्ज (नमुना)",
+        "pa": "ਕਿਸਾਨ ਕਰੈਡਿਟ ਕਾਰਡ ਲੋਨ (ਨਮੂਨਾ)",
+        "bgc": "किसान क्रेडिट कार्ड लोन (नमूना)"
+      },
       "lender_name": "Sample Bank (mock)",
       "status": "active",
       "sanctioned_amount_inr": 60000,
@@ -155,43 +240,119 @@
       }
     },
     "documents": [
-      { "code": "id_proof", "name": { "en": "Identity proof", "hi": "पहचान पत्र" }, "submitted": true },
-      { "code": "address_proof", "name": { "en": "Address proof", "hi": "पते का प्रमाण" }, "submitted": true },
-      { "code": "bank_passbook", "name": { "en": "Bank passbook copy", "hi": "बैंक पासबुक की कॉपी" }, "submitted": true },
-      { "code": "land_record", "name": { "en": "Land record copy", "hi": "ज़मीन के रिकॉर्ड की कॉपी" }, "submitted": false },
-      { "code": "passport_photo", "name": { "en": "Passport-size photo", "hi": "पासपोर्ट साइज़ फोटो" }, "submitted": false }
+      {
+        "code": "id_proof",
+        "name": {
+          "en": "Identity proof",
+          "hi": "पहचान पत्र",
+          "mr": "ओळखपत्र",
+          "pa": "ਪਛਾਣ ਪੱਤਰ",
+          "bgc": "पहचान पत्र"
+        },
+        "submitted": true
+      },
+      {
+        "code": "address_proof",
+        "name": {
+          "en": "Address proof",
+          "hi": "पते का प्रमाण",
+          "mr": "पत्त्याचा पुरावा",
+          "pa": "ਪਤੇ ਦਾ ਪ੍ਰਮਾਣ",
+          "bgc": "पते का प्रमाण"
+        },
+        "submitted": true
+      },
+      {
+        "code": "bank_passbook",
+        "name": {
+          "en": "Bank passbook copy",
+          "hi": "बैंक पासबुक की कॉपी",
+          "mr": "बँकेची पासबुकची प्रत",
+          "pa": "ਬੈਂਕ ਪਾਸਬੁੱਕ ਦੀ ਕਾਪੀ",
+          "bgc": "बैंक पासबुक की कॉपी"
+        },
+        "submitted": true
+      },
+      {
+        "code": "land_record",
+        "name": {
+          "en": "Land record copy",
+          "hi": "ज़मीन के रिकॉर्ड की कॉपी",
+          "mr": "जमिनीचा नोंदपत्र प्रत",
+          "pa": "ਜ਼ਮੀਨ ਰਿਕਾਰਡ ਦੀ ਕਾਪੀ",
+          "bgc": "जमीन के रेकॉर्ड की कॉपी"
+        },
+        "submitted": false
+      },
+      {
+        "code": "passport_photo",
+        "name": {
+          "en": "Passport-size photo",
+          "hi": "पासपोर्ट साइज़ फोटो",
+          "mr": "पासपोर्ट आकाराची फोटो",
+          "pa": "ਪਾਸਪੋਰਟ-ਸਾਈਜ਼ ਫੋਟੋ",
+          "bgc": "पासपोर्ट साइज की फोटो"
+        },
+        "submitted": false
+      }
     ],
-    "missing_document_codes": ["land_record", "passport_photo"],
+    "missing_document_codes": [
+      "land_record",
+      "passport_photo"
+    ],
     "schemes": [
       {
         "code": "miss",
-        "name": { "en": "Interest subvention on crop loans (MISS)", "hi": "फसल ऋण पर ब्याज सहायता (MISS)" },
+        "name": {
+          "en": "Interest subvention on crop loans (MISS)",
+          "hi": "फसल ऋण पर ब्याज सहायता (MISS)",
+          "mr": "पिकांच्या कर्जावर व्याज सबसिडी (MISS)",
+          "pa": "ਫਸਲ ਲੋਣ 'ਤੇ ਬਿਆਜ ਸਹਾਇਤਾ (MISS)",
+          "bgc": "फसल ऋण पर ब्याज सहायता (MISS)"
+        },
         "summary": {
           "en": "Government interest support on short-term crop loans such as KCC.",
-          "hi": "किसान क्रेडिट कार्ड जैसे अल्पकालिक फसल ऋणों पर सरकारी ब्याज सहायता।"
+          "hi": "किसान क्रेडिट कार्ड जैसे अल्पकालिक फसल ऋणों पर सरकारी ब्याज सहायता।",
+          "mr": "KCC सारख्या अल्पकालीन पिकांच्या कर्जांवर सरकारी व्याज सहाय्य.",
+          "pa": "KCC ਵਰਗੇ ਛੋਟੇ ਸਮੇਂ ਦੇ ਫਸਲ ਲੋਣਾਂ 'ਤੇ ਸਰਕਾਰੀ ਬਿਆਜ ਸਹਾਇਤਾ।",
+          "bgc": "किसान क्रेडिट कार्ड (KCC) जैंसे अल्पकालिक फसल ऋणां पर सरकारी ब्याज मदद।"
         },
         "official_url": null,
         "verify_note": {
           "en": "Check eligibility and current terms with your bank.",
-          "hi": "पात्रता और मौजूदा शर्तें अपने बैंक से जाँचें।"
+          "hi": "पात्रता और मौजूदा शर्तें अपने बैंक से जाँचें।",
+          "mr": "पात्रता व सध्याच्या अटींसाठी आपल्या बँकेशी तपासा.",
+          "pa": "ਪਾਤਰਤਾ ਅਤੇ ਮੌਜੂਦਾ ਸ਼ਰਤਾਂ ਲਈ ਆਪਣੇ ਬੈਂਕ ਨਾਲ ਚੈੱਕ ਕਰੋ।",
+          "bgc": "पात्रता और चालू शर्तां ने अपने बैंक तै जाँच ले।"
         }
       },
       {
         "code": "pmfby",
-        "name": { "en": "PMFBY crop insurance", "hi": "प्रधानमंत्री फसल बीमा योजना (PMFBY)" },
+        "name": {
+          "en": "PMFBY crop insurance",
+          "hi": "प्रधानमंत्री फसल बीमा योजना (PMFBY)",
+          "mr": "PMFBY पिक विमा",
+          "pa": "PMFBY ਫਸਲ ਬੀਮਾ",
+          "bgc": "प्रधानमंत्री फसल बीमा योजना (PMFBY)"
+        },
         "summary": {
           "en": "Government crop insurance scheme covering yield losses.",
-          "hi": "फसल नुकसान को कवर करने वाली सरकारी फसल बीमा योजना।"
+          "hi": "फसल नुकसान को कवर करने वाली सरकारी फसल बीमा योजना।",
+          "mr": "उत्पादन नुकसानीचे संरक्षण करणारी सरकारी पिक विमा योजना.",
+          "pa": "ਉਪਜ ਦੇ ਨੁਕਸਾਨ ਨੂੰ ਕਵਰ ਕਰਨ ਵਾਲੀ ਸਰਕਾਰੀ ਫਸਲ ਬੀਮਾ ਯੋਜਨਾ।",
+          "bgc": "फसल नुकसान ने कवर करन वाली सरकारी फसल बीमा योजना।"
         },
         "official_url": "https://pmfby.gov.in",
         "verify_note": {
           "en": "Check enrolment dates and eligibility on the official portal.",
-          "hi": "नामांकन की तारीखें और पात्रता आधिकारिक पोर्टल पर जाँचें।"
+          "hi": "नामांकन की तारीखें और पात्रता आधिकारिक पोर्टल पर जाँचें।",
+          "mr": "नोंदणीच्या तारखा व पात्रता अधिकृत पोर्टलवर तपासा.",
+          "pa": "ਅਧਿਕਾਰਕ ਪੋਰਟਲ 'ਤੇ ਨਾਮਾਂਕਣ ਦੀਆਂ ਤਰੀਖਾਂ ਅਤੇ ਪਾਤਰਤਾ ਚੈੱਕ ਕਰੋ।",
+          "bgc": "नामांकन की तारीखां और पात्रता ने आधिकारिक पोर्टल पर जाँच ले।"
         }
       }
     ]
   },
-
   "chat_examples": [
     {
       "request": {
@@ -202,7 +363,9 @@
       "reply": {
         "reply": "दो कागज़ बाकी हैं: ज़मीन के रिकॉर्ड की कॉपी और पासपोर्ट साइज़ फोटो। कृपया अपनी बैंक शाखा से पुष्टि करें।",
         "lang": "hi",
-        "used_context": ["loan_summary"],
+        "used_context": [
+          "loan_summary"
+        ],
         "is_fallback": false
       }
     },
@@ -215,7 +378,10 @@
       "reply": {
         "reply": "Your tomato crop is flowering and the photo shows suspicious spots, possibly early blight. With the recent wet weather, such spots can spread, so checking nearby plants today shows how widespread it is. This is not a confirmed diagnosis — please confirm with your local agriculture extension office.",
         "lang": "en",
-        "used_context": ["crop_profile", "analysis"],
+        "used_context": [
+          "crop_profile",
+          "analysis"
+        ],
         "is_fallback": false
       }
     },

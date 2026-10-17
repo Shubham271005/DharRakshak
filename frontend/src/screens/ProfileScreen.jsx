@@ -1,59 +1,46 @@
 /*
- * SCREEN: My crop — profile card, weather, registration form (F2 + C5)
+ * SCREEN: My crop — profile summary, weather, edit / register form (F2 + C5)
  * OWNER:  Teammate 1
  * DATA:   getCropProfile, getWeather, getCurrentPosition, saveCropProfile
- *         (see docs/CONTRACT.md, row "Crop registration + profile card")
  *
- * This screen is fully working. POLISH TASKS for Teammate 1:
- *   [ ] Try it on a phone-width window and fix anything cramped.
- *   [ ] Ask a Hindi speaker to read every label in हिंदी mode; fix wording
- *       in shared/i18n/hi.json.
- *   [ ] Add a small crop icon/emoji next to the crop name in the card.
- *   [ ] Show "Saved ✓" for 3 seconds, then hide it automatically.
- *   [ ] Demo prep: register a second crop live, then switch back to the demo crop.
+ * POLISH TASKS for Teammate 1:
+ *   [ ] Try it on a phone and fix anything cramped.
+ *   [ ] Check every label in each language with a native speaker.
+ *   [ ] Demo prep: register a second crop live, then switch back.
  */
+import { CalendarDays, CloudRain, Droplets, LocateFixed, MapPin, Ruler, Save, Sprout, Thermometer, Wheat } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ApiError, getCropProfile, getCurrentPosition, getWeather, saveCropProfile } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
-import { Button, Card, ErrorBox, Field, INPUT_CLASS, Loading, MockTag, Notice, ScreenHeader, SectionTitle } from '../components/ui.jsx'
+import { Button, Card, ErrorBox, Field, INPUT_CLASS, Loading, MockTag, Notice, Pill, ScreenHeader, Stat, WeatherTiles } from '../components/ui.jsx'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { formatDate, todayISO } from '../lib/format.js'
 import { CROP_OPTIONS, STAGE_LABELS, cropLabel, stageLabel } from '../lib/labels.js'
 
-function Fact({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-0.5 text-lg font-bold text-forest">{value}</p>
-    </div>
-  )
-}
-
-function ProfileCard({ profile }) {
+function ProfileSummary({ profile }) {
   const { lang, t } = useLanguage()
-  const harvest =
-    profile.expected_harvest_start || profile.expected_harvest_end
-      ? `${formatDate(profile.expected_harvest_start, lang)} – ${formatDate(profile.expected_harvest_end, lang)}`
-      : '—'
-  const yieldText = profile.yield_estimate
-    ? `${profile.yield_estimate.min_kg}–${profile.yield_estimate.max_kg} kg`
-    : t('range_pending')
+  const harvest = profile.expected_harvest_start || profile.expected_harvest_end
+    ? `${formatDate(profile.expected_harvest_start, lang)} – ${formatDate(profile.expected_harvest_end, lang)}`
+    : '—'
   return (
-    <Card>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-2xl font-bold text-forest">
-          {cropLabel(profile.crop_type, lang)}
-          {profile.variety && <span className="ml-2 text-base font-normal text-muted">({profile.variety})</span>}
-        </h2>
-        <p className="text-sm text-muted">{profile.farmer_name}</p>
+    <Card title={t('crop_card_title')} icon={Sprout}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xl font-bold text-forest">
+            {cropLabel(profile.crop_type, lang)}
+            {profile.variety && <span className="ml-1.5 text-sm font-normal text-muted">({profile.variety})</span>}
+          </p>
+          <p className="text-xs text-muted">{profile.farmer_name}</p>
+        </div>
+        <Pill tone="tint">{stageLabel(profile.stage, lang)}</Pill>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <Fact label={t('stage')} value={stageLabel(profile.stage, lang)} />
-        <Fact label={t('day_count')} value={`${t('day')} ${profile.days_since_sowing}`} />
-        <Fact label={t('area')} value={`${profile.area_acres} ${t('acres')}`} />
-        <Fact label={t('location')} value={profile.location.name} />
-        <Fact label={t('harvest_window')} value={harvest} />
-        <Fact label={t('yield_estimate')} value={yieldText} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <Stat icon={CalendarDays} label={t('day_count')} value={`${t('day')} ${profile.days_since_sowing}`} />
+        <Stat icon={Ruler} label={t('area')} value={`${profile.area_acres} ${t('acres')}`} />
+        <Stat icon={MapPin} label={t('location')} value={profile.location.name} />
+        <Stat icon={Wheat} label={t('harvest_window')} value={harvest} />
+        <Stat icon={Sprout} label={t('yield_estimate')}
+          value={profile.yield_estimate ? `${profile.yield_estimate.min_kg}–${profile.yield_estimate.max_kg} kg` : t('range_pending')} />
       </div>
     </Card>
   )
@@ -61,35 +48,19 @@ function ProfileCard({ profile }) {
 
 function WeatherCard({ cropId }) {
   const { t, tr } = useLanguage()
-  const { data: weather, loading, error } = useApiData(() => getWeather(cropId), [cropId])
+  const { data: w, loading, error } = useApiData(() => getWeather(cropId), [cropId])
   return (
-    <Card>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <SectionTitle>{t('weather_title')}</SectionTitle>
-        {weather?.source === 'mock' && <MockTag />}
-      </div>
+    <Card title={t('weather_title')} icon={CloudRain} action={w?.source === 'mock' ? <MockTag /> : null}>
       {loading && <Loading />}
       {error && <p className="text-sm text-muted">{t('weather_unavailable')}</p>}
-      {weather && (
+      {w && (
         <>
-          <div className="mb-3 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl bg-tint p-3">
-              <p className="text-2xl">☔</p>
-              <p className="font-bold text-forest">{weather.rain_last_3_days_mm} mm</p>
-              <p className="text-xs text-muted">{t('rain_3_days')}</p>
-            </div>
-            <div className="rounded-xl bg-tint p-3">
-              <p className="text-2xl">💧</p>
-              <p className="font-bold text-forest">{Math.round(weather.avg_humidity_pct)}%</p>
-              <p className="text-xs text-muted">{t('humidity')}</p>
-            </div>
-            <div className="rounded-xl bg-tint p-3">
-              <p className="text-2xl">🌡</p>
-              <p className="font-bold text-forest">{Math.round(weather.avg_temp_c)}°C</p>
-              <p className="text-xs text-muted">{t('temperature')}</p>
-            </div>
-          </div>
-          <p className="text-sm text-ink">{tr(weather.summary)}</p>
+          <WeatherTiles items={[
+            { icon: CloudRain, label: t('rain_short'), value: `${w.rain_last_3_days_mm} mm` },
+            { icon: Droplets, label: t('humidity'), value: `${Math.round(w.avg_humidity_pct)}%` },
+            { icon: Thermometer, label: t('temperature'), value: `${Math.round(w.avg_temp_c)}°C` },
+          ]} />
+          <p className="mt-3 text-xs leading-relaxed">{tr(w.summary)}</p>
         </>
       )}
     </Card>
@@ -97,15 +68,8 @@ function WeatherCard({ cropId }) {
 }
 
 const toForm = (p) => ({
-  farmer_name: p.farmer_name,
-  crop_type: p.crop_type,
-  variety: p.variety ?? '',
-  sowing_date: p.sowing_date,
-  area_acres: p.area_acres,
-  location_name: p.location.name,
-  stage: p.stage,
-  latitude: null,
-  longitude: null,
+  farmer_name: p.farmer_name, crop_type: p.crop_type, variety: p.variety ?? '', sowing_date: p.sowing_date,
+  area_acres: p.area_acres, location_name: p.location.name, stage: p.stage, latitude: null, longitude: null,
 })
 
 function CropForm({ profile, cropId, onSaved }) {
@@ -116,13 +80,13 @@ function CropForm({ profile, cropId, onSaved }) {
   const [locating, setLocating] = useState(false)
 
   useEffect(() => setForm(toForm(profile)), [profile])
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value, ...(field === 'location_name' ? { latitude: null, longitude: null } : {}) }))
+  const set = (field) => (e) =>
+    setForm((f) => ({ ...f, [field]: e.target.value, ...(field === 'location_name' ? { latitude: null, longitude: null } : {}) }))
 
   async function useMyLocation() {
     setLocating(true)
     try {
-      const pos = await getCurrentPosition()
-      setForm((f) => ({ ...f, ...pos }))
+      setForm({ ...form, ...(await getCurrentPosition()) })
       setMessage({ tone: 'tint', text: t('location_captured') })
     } catch (err) {
       setMessage({ tone: 'rust', text: `${t('location_failed')} ${err.message}` })
@@ -147,6 +111,7 @@ function CropForm({ profile, cropId, onSaved }) {
       const saved = await saveCropProfile(body, asNew ? null : cropId)
       onSaved(saved)
       setMessage({ tone: 'tint', text: asNew ? t('registered') : t('saved') })
+      setTimeout(() => setMessage(null), 3000)
     } catch (err) {
       setMessage({ tone: 'rust', text: err instanceof ApiError ? err.message : String(err) })
     } finally {
@@ -155,9 +120,8 @@ function CropForm({ profile, cropId, onSaved }) {
   }
 
   return (
-    <Card>
-      <SectionTitle>{t('edit_crop')}</SectionTitle>
-      <form onSubmit={(e) => { e.preventDefault(); save(false) }} className="grid gap-4 md:grid-cols-2">
+    <Card title={t('edit_crop')} icon={Save}>
+      <form onSubmit={(e) => { e.preventDefault(); save(false) }} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Field label={t('farmer_name')}>
           <input className={INPUT_CLASS} value={form.farmer_name} onChange={set('farmer_name')} required />
         </Field>
@@ -166,8 +130,10 @@ function CropForm({ profile, cropId, onSaved }) {
             {Object.keys(CROP_OPTIONS).map((key) => <option key={key} value={key}>{cropLabel(key, lang)}</option>)}
           </select>
         </Field>
-        <Field label={t('variety')} hint={t('variety_hint')}>
-          <input className={INPUT_CLASS} value={form.variety} onChange={set('variety')} />
+        <Field label={t('stage')}>
+          <select className={INPUT_CLASS} value={form.stage} onChange={set('stage')}>
+            {Object.keys(STAGE_LABELS).map((key) => <option key={key} value={key}>{stageLabel(key, lang)}</option>)}
+          </select>
         </Field>
         <Field label={t('sowing_date')}>
           <input type="date" className={INPUT_CLASS} value={form.sowing_date} max={todayISO()} onChange={set('sowing_date')} required />
@@ -175,24 +141,22 @@ function CropForm({ profile, cropId, onSaved }) {
         <Field label={t('area_acres')}>
           <input type="number" min="0.1" step="0.1" className={INPUT_CLASS} value={form.area_acres} onChange={set('area_acres')} required />
         </Field>
-        <Field label={t('stage')}>
-          <select className={INPUT_CLASS} value={form.stage} onChange={set('stage')}>
-            {Object.keys(STAGE_LABELS).map((key) => <option key={key} value={key}>{stageLabel(key, lang)}</option>)}
-          </select>
+        <Field label={t('variety')} hint={t('variety_hint')}>
+          <input className={INPUT_CLASS} value={form.variety} onChange={set('variety')} />
         </Field>
-        <div className="md:col-span-2">
+        <div className="sm:col-span-2 lg:col-span-3">
           <Field label={t('village_district')} hint={form.latitude != null ? `📍 ${form.latitude}, ${form.longitude}` : t('village_hint')}>
             <div className="flex gap-2">
               <input className={INPUT_CLASS} value={form.location_name} onChange={set('location_name')} required />
-              <Button variant="secondary" onClick={useMyLocation} disabled={locating} className="shrink-0">
-                📍 {locating ? '…' : t('use_my_location')}
+              <Button variant="secondary" icon={LocateFixed} onClick={useMyLocation} disabled={locating} className="shrink-0">
+                <span className="hidden sm:inline">{locating ? '…' : t('use_my_location')}</span>
               </Button>
             </div>
           </Field>
         </div>
-        {message && <Notice tone={message.tone} className="md:col-span-2">{message.text}</Notice>}
-        <div className="flex flex-wrap gap-3 md:col-span-2">
-          <Button type="submit" disabled={saving}>{saving ? t('saving') : t('save_changes')}</Button>
+        {message && <Notice tone={message.tone} className="sm:col-span-2 lg:col-span-3">{message.text}</Notice>}
+        <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+          <Button type="submit" icon={Save} disabled={saving}>{saving ? t('saving') : t('save_changes')}</Button>
           <Button variant="secondary" onClick={() => save(true)} disabled={saving}>{t('register_new')}</Button>
         </div>
       </form>
@@ -203,26 +167,19 @@ function CropForm({ profile, cropId, onSaved }) {
 export default function ProfileScreen({ cropId, onCropChange }) {
   const { t } = useLanguage()
   const { data: profile, loading, error, reload } = useApiData(() => getCropProfile(cropId), [cropId])
-
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <ScreenHeader title={t('nav_profile')} subtitle={t('profile_subtitle')} />
       {loading && !profile && <Loading />}
       {error && <ErrorBox error={error} onRetry={reload} />}
       {profile && (
         <>
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="lg:col-span-3"><ProfileCard profile={profile} /></div>
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-3"><ProfileSummary profile={profile} /></div>
             <div className="lg:col-span-2"><WeatherCard cropId={cropId} /></div>
           </div>
-          <CropForm
-            profile={profile}
-            cropId={cropId}
-            onSaved={(saved) => {
-              if (saved.crop_id !== cropId) onCropChange(saved.crop_id)
-              else reload()
-            }}
-          />
+          <CropForm profile={profile} cropId={cropId}
+            onSaved={(saved) => (saved.crop_id !== cropId ? onCropChange(saved.crop_id) : reload())} />
         </>
       )}
     </section>

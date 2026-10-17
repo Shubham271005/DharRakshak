@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from backend.engines.content import load
 from backend.ml.classifier import ClassInfo
-from shared.contract import CropProfile, Weather
+from shared.contract import SUPPORTED_LANGUAGES, CropProfile, LocalizedText, Weather
 
 WEATHER_SENSITIVE_TYPES = {"fungal", "bacterial"}  # spread by wet leaves / rain splash
 
@@ -97,12 +97,16 @@ class Facts:
             "rain_next": f"{(w.rain_next_3_days_mm or 0):.0f}" if w else "",
             "chance": f"{(w.max_rain_chance_next_3_days_pct or 0):.0f}" if w else "",
         }
+        def name_in(table: dict, key: str, lang: str) -> str:
+            entry = table.get(key, {})
+            return LocalizedText(**entry).in_lang(lang) if entry else key
+
         values = {}
-        for lang in ("en", "hi"):
+        for lang in SUPPORTED_LANGUAGES:
             values[lang] = {
                 **numbers,
                 "disease": self.top.name.in_lang(lang),
-                "crop": names["crops"].get(self.crop.crop_type, {}).get(lang, self.crop.crop_type),
-                "stage": names["stages"][self.crop.stage.value][lang],
+                "crop": name_in(names["crops"], self.crop.crop_type, lang),
+                "stage": name_in(names["stages"], self.crop.stage.value, lang),
             }
         return values

@@ -1,35 +1,39 @@
 /*
- * App shell: sidebar + the selected screen.
+ * App shell: navigation + the selected screen.
  *
  * Every screen receives the same props:
  *   cropId        — the farmer's current crop (string)
  *   onCropChange  — call with a new crop_id after registering a crop
+ *   onNavigate    — switch to another screen by id (e.g. from the dashboard)
  *
- * Screens are owned by teammates (see src/screens/*.jsx). Each is wrapped
- * in an ErrorBoundary so one unfinished screen can't break the others.
+ * Each screen is wrapped in an ErrorBoundary so one broken screen can't
+ * take down the others.
  */
+import { IndianRupee, LayoutDashboard, Leaf, MessageCircle, Sprout } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { demoCropId } from './api/client.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
-import Sidebar from './components/Sidebar.jsx'
+import { BottomNav, MobileHeader, Sidebar } from './components/Sidebar.jsx'
 import AnalysisScreen from './screens/AnalysisScreen.jsx'
 import ChatScreen from './screens/ChatScreen.jsx'
+import DashboardScreen from './screens/DashboardScreen.jsx'
 import FinanceScreen from './screens/FinanceScreen.jsx'
 import ProfileScreen from './screens/ProfileScreen.jsx'
 
-// Order here = order in the sidebar. `labelKey` is a key in i18n/uiText.js.
+// Order here = order in the navigation. `labelKey` is a key in shared/i18n/*.json.
 const SCREENS = [
-  { id: 'profile', labelKey: 'nav_profile', icon: '🌱', Component: ProfileScreen },
-  { id: 'analysis', labelKey: 'nav_analysis', icon: '🍃', Component: AnalysisScreen },
-  { id: 'finance', labelKey: 'nav_finance', icon: '₹', Component: FinanceScreen },
-  { id: 'chat', labelKey: 'nav_chat', icon: '💬', Component: ChatScreen },
+  { id: 'dashboard', labelKey: 'nav_dashboard', Icon: LayoutDashboard, Component: DashboardScreen },
+  { id: 'analysis', labelKey: 'nav_analysis', Icon: Leaf, Component: AnalysisScreen },
+  { id: 'profile', labelKey: 'nav_profile', Icon: Sprout, Component: ProfileScreen },
+  { id: 'finance', labelKey: 'nav_finance', Icon: IndianRupee, Component: FinanceScreen },
+  { id: 'chat', labelKey: 'nav_chat', Icon: MessageCircle, Component: ChatScreen },
 ]
 
 // The current screen is kept in the URL hash (e.g. http://localhost:5173/#finance)
 // so refreshing the page — or sharing the link in a demo — keeps the screen.
 const screenFromHash = () => {
   const id = window.location.hash.slice(1)
-  return SCREENS.some((s) => s.id === id) ? id : 'profile'
+  return SCREENS.some((s) => s.id === id) ? id : 'dashboard'
 }
 
 export default function App() {
@@ -39,6 +43,7 @@ export default function App() {
   // Keep the URL and the screen in sync (also handles browser Back/Forward).
   useEffect(() => {
     if (window.location.hash.slice(1) !== screenId) window.location.hash = screenId
+    window.scrollTo({ top: 0 })
   }, [screenId])
   useEffect(() => {
     const onHashChange = () => setScreenId(screenFromHash())
@@ -51,12 +56,16 @@ export default function App() {
   return (
     <div className="min-h-screen md:flex">
       <Sidebar screens={SCREENS} current={screenId} onSelect={setScreenId} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-10 md:py-10">
-        {/* `key` resets the error boundary when you switch screens */}
-        <ErrorBoundary key={screenId}>
-          <Component cropId={cropId} onCropChange={setCropId} />
-        </ErrorBoundary>
-      </main>
+      <div className="min-w-0 flex-1">
+        <MobileHeader />
+        <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-7">
+          {/* `key` resets the error boundary when you switch screens */}
+          <ErrorBoundary key={screenId}>
+            <Component cropId={cropId} onCropChange={setCropId} onNavigate={setScreenId} />
+          </ErrorBoundary>
+        </main>
+      </div>
+      <BottomNav screens={SCREENS} current={screenId} onSelect={setScreenId} />
     </div>
   )
 }

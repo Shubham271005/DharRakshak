@@ -39,12 +39,6 @@ _CHAT_KEYWORDS: list[tuple[tuple[str, ...], int]] = [
     (("why", "क्यों", "inspect", "जाँच"), 1),
 ]
 
-_UNKNOWN_REPLY = {
-    "en": "The chatbot is offline right now, so I can only give saved answers. Please try again in a moment.",
-    "hi": "चैटबॉट अभी ऑफ़लाइन है, इसलिए मैं केवल सहेजे गए जवाब दे सकता हूँ। कृपया थोड़ी देर बाद फिर कोशिश करें।",
-}
-
-
 def mock_chat_reply(request: ChatRequest) -> ChatReply:
     """Saved demo answers (fallback when the LLM is unavailable). Safety first:
     pesticide questions are matched before anything else."""
@@ -52,8 +46,6 @@ def mock_chat_reply(request: ChatRequest) -> ChatReply:
     for words, example_index in _CHAT_KEYWORDS:
         if any(word in text for word in words):
             return sample().chat_examples[example_index].reply
-    return ChatReply(
-        reply=_UNKNOWN_REPLY.get(request.lang, _UNKNOWN_REPLY["en"]),
-        lang=request.lang,
-        is_fallback=True,
-    )
+    from backend.engines.content import message  # local import avoids a cycle at startup
+
+    return ChatReply(reply=message("chat_offline").in_lang(request.lang), lang=request.lang, is_fallback=True)

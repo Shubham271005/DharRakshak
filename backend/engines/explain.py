@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from backend.engines.content import fill, load
 from backend.engines.facts import Facts
-from shared.contract import Explanation, LocalizedText, Risk
+from shared.contract import SUPPORTED_LANGUAGES, Explanation, LocalizedText, Risk
 
 MAX_REASONS = 3  # keep it short enough to read on a phone
 
@@ -24,9 +24,10 @@ def build_explanation(facts: Facts, risk: Risk) -> Explanation:
     # (fewest points) but never reorder the ones that stay.
     keep = sorted(range(len(risk.reasons)), key=lambda i: risk.reasons[i].points, reverse=True)[:MAX_REASONS]
     ordered = [risk.reasons[i] for i in sorted(keep)]
+    level = LocalizedText(**level_names)
     values = {
-        lang: {"level": level_names[lang], "reasons": " ".join(r.text.in_lang(lang) for r in ordered)}
-        for lang in ("en", "hi")
+        lang: {"level": level.in_lang(lang), "reasons": " ".join(r.text.in_lang(lang) for r in ordered)}
+        for lang in SUPPORTED_LANGUAGES
     }
     summary = fill(templates["summary"], values)
 

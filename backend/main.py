@@ -276,12 +276,15 @@ ALLOWED_AUDIO_TYPES = {
     "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/flac", "video/webm",  # some browsers label recordings video/webm
 }
 MAX_AUDIO_BYTES = 10 * 1024 * 1024  # ~10 minutes of compressed speech; plenty for a question
+# Whisper languages we pass through. Haryanvi and Bhojpuri have no Whisper
+# model, so the frontend sends "hi" (closest) for them.
+STT_LANGUAGES = {"en", "hi", "mr", "pa"}
 
 
 @router.post("/voice/transcribe", response_model=VoiceTranscript, tags=["chat"])
 async def transcribe(
     audio: UploadFile = File(..., description="Recorded question (webm/ogg/wav/mp3/m4a)"),
-    lang: str = Form("hi", description="Expected language: 'hi' or 'en'"),
+    lang: str = Form("hi", description="Expected language: en, hi, mr or pa (use 'hi' for Haryanvi/Bhojpuri)"),
 ) -> VoiceTranscript:
     """Speech-to-text for the voice assistant (Groq Whisper). The frontend
     sends the text to /api/chat and reads the reply aloud with the browser's
@@ -300,7 +303,7 @@ async def transcribe(
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Voice input is unavailable right now. Please type your question.") from err
     if not text:
         raise HTTPException(422, "Couldn't hear any speech. Please try again, a little closer to the microphone.")
-    return VoiceTranscript(text=text, lang=lang if lang in ("hi", "en") else "en")
+    return VoiceTranscript(text=text, lang=lang if lang in STT_LANGUAGES else "hi")
 
 
 app.include_router(router)

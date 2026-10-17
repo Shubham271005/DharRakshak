@@ -28,6 +28,7 @@ import logging
 import re
 
 from backend import repository
+from backend.engines.content import message
 from backend.sample_store import mock_chat_reply
 from backend.services import llm
 from shared.contract import ChatReply, ChatRequest, CropProfile
@@ -37,7 +38,16 @@ log = logging.getLogger("dharrakshak.chat")
 HISTORY_TURNS = 8      # earlier messages sent for context
 MAX_REPLY_TOKENS = 450  # ~4 short sentences + room for Hindi script
 
-LANGUAGE_NAMES = {"en": "English", "hi": "Hindi (Devanagari script)"}
+# How to ask the model for each language. Haryanvi and Bhojpuri are mostly
+# spoken languages: ask for natural dialect in Devanagari, simple words.
+LANGUAGE_NAMES = {
+    "en": "English",
+    "hi": "Hindi (Devanagari script)",
+    "mr": "Marathi (Devanagari script)",
+    "pa": "Punjabi (Gurmukhi script)",
+    "bgc": "Haryanvi (the dialect spoken in rural Haryana, written in Devanagari; use natural Haryanvi words, keep it easy to understand)",
+    "bho": "Bhojpuri (as spoken in Bihar and eastern Uttar Pradesh, written in Devanagari; use natural Bhojpuri words, keep it easy to understand)",
+}
 
 SYSTEM_RULES = """You are DharRakshak (धररक्षक), a friendly farming assistant for small farmers in India.
 
@@ -60,19 +70,12 @@ _DOSE_PATTERN = re.compile(
     r"\d+(\.\d+)?\s*(ml|मिली|g|gm|gram|grams|ग्राम|kg|किलो|litre|liter|लीटर|%)\s*(/|per|प्रति)",
     re.IGNORECASE,
 )
-_SAFE_REFERRAL = {
-    "en": "I can't recommend specific products or doses. The right treatment depends on your crop and region, "
-          "so please confirm with your local agriculture extension office or Krishi Vigyan Kendra.",
-    "hi": "मैं किसी खास दवा या उसकी मात्रा की सलाह नहीं दे सकता। सही उपचार आपकी फसल और क्षेत्र पर निर्भर करता है, "
-          "इसलिए कृपया अपने स्थानीय कृषि विस्तार कार्यालय या कृषि विज्ञान केंद्र से पुष्टि करें।",
-}
-
-
 def _guard(reply: str, lang: str) -> str:
-    """Replace any reply that contains dose-like wording."""
+    """Replace any reply that contains dose-like wording (text in every
+    language: shared/content/messages.json → chat_safe_referral)."""
     if _DOSE_PATTERN.search(reply):
         log.warning("Blocked a reply containing dose-like wording.")
-        return _SAFE_REFERRAL.get(lang, _SAFE_REFERRAL["en"])
+        return message("chat_safe_referral").in_lang(lang)
     return reply
 
 

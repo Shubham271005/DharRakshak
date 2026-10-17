@@ -12,6 +12,7 @@ venv/
 *.db
 data/uploads/
 data/eval/
+data/eval_field/
 
 # Downloaded model weights (large; fetched by the backend on first run)
 models/

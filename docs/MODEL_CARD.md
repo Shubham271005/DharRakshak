@@ -1,68 +1,100 @@
-# Model Card: plant-disease image classifier (F1)
+# Model card: plant-disease image classifier (F1)
 
-The team chose this model. This page records where it came from, how we use it, and what it can't do, so we can answer judges honestly.
+## Summary
 
-## Source
+The first model scored 95% on lab photos but only **12%** on real field photos. After evaluating 4 models and 8 preprocessing settings on real photos, the app now uses a different model plus a crop-aware pipeline. That reaches **60% top-1 and 85% top-3** on the same field photos.
+
+All numbers below were measured with `scripts/eval_pipeline.py` and `scripts/eval_model.py`. None come from model cards.
+
+## Current setup (default)
 
 | | |
 |---|---|
-| Model | [`Daksh159/plant-disease-mobilenetv2`](https://huggingface.co/Daksh159/plant-disease-mobilenetv2) on Hugging Face |
-| Author | Daksh Goyal |
-| License | **Apache-2.0**: free to use, modify and redistribute with attribution |
-| Pinned revision | `d3fb2afc90da83086eff06e9088a889b6c43d4a6` |
-| Weights file | `mobilenetv2_plant.pth` (about 9 MB), state dict only (no pickled code) |
-| SHA-256 | `26c97b05ef2caf58bce6f901c725926546a887ee50f0a637a363b644ec17f96e` (checked on load) |
-| Architecture | MobileNetV2 (ImageNet-pretrained backbone, frozen) with a new head: `Dropout(0.2) → Linear(1280 → 38)` |
-| Training data | "New Plant Diseases Dataset (Augmented)", built from PlantVillage, about 87k images |
-| Reported accuracy | 95% validation accuracy, **reported by the author** on a validation split of the same dataset. We have not reproduced it. |
+| Model | [`linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification`](https://huggingface.co/linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification), pinned to `c1861579` |
+| Architecture | MobileNetV2 (9 MB), fine-tuned from `google/mobilenet_v2_1.0_224` on the Kaggle "New Plant Diseases" (PlantVillage) dataset |
+| Classes | 38 (14 crops). Mapped onto `shared/content/labels.json` by crop and disease words, with a strict one-to-one check |
+| **License** | **Not stated by the author ("other").** Fine for a hackathon demo, but check before any commercial use. Licensed alternatives are one setting away (below). |
+| Preprocessing | Fix photo rotation (EXIF) + quality checks (blur, dark, blank, tiny). Then the model's own processor: resize 256, centre-crop 224, normalise 0.5/0.5. |
+| Inference | Average of the photo and its mirror image (flip test-time augmentation). CPU, about 50 ms per photo including preprocessing. |
+| Ranking | **Crop-aware:** only the farmer's registered crop's classes are ranked, renormalised within that crop. |
+| Uncertainty | Flagged *uncertain* if the photo is poor (blurry, dark, blank, tiny), or the top-2 gap within the crop is under 0.30, or the crop has only one class in the model. A "may not be your crop" note appears if the photo puts under 0.1% of its probability on the registered crop. |
 
-## Classes (38)
+To choose another model, set `DHARRAKSHAK_MODEL=…` in `.env`, then run `python scripts/download_model.py`.
 
-The model covers 14 crops: apple, blueberry, cherry, maize (corn), grape, orange, peach, bell pepper, potato, raspberry, soybean, squash, strawberry, tomato.
+## Evaluation data
 
-There are 10 tomato classes: bacterial spot, early blight, late blight, leaf mold, Septoria leaf spot, spider mites, target spot, yellow leaf curl virus, mosaic virus, healthy.
+| Set | Photos | What it is | Source |
+|---|---|---|---|
+| Lab | 38 (19 classes) | PlantVillage test split: one leaf, plain background | `BrandonFors/Plant-Diseases-PlantVillage-Dataset` (`scripts/fetch_eval_images.py`) |
+| **Field** | **89 (23 classes)** | **PlantDoc: real photos with clutter, shadows, several leaves** | `Project-AgML/plant_doc_classification` (`scripts/fetch_field_images.py`) |
 
-The full ordered list, with crop keys and English/Hindi names, is in `shared/content/labels.json`.
+None of the candidate models was trained on PlantDoc, so the field set is a fair test. **It is small (89 photos), so differences of a few points are within noise.** The chosen setup was checked on two random halves (52% and 71%), and beats the alternatives on both.
 
-**Where the class order came from:** the model card mentions a `class_names.json`, but the Hugging Face repo doesn't contain it. We took the order from the `labels.json` in the community Space [`Vansh180/daksh159-plant-disease-api`](https://huggingface.co/spaces/Vansh180/daksh159-plant-disease-api). It matches the standard alphabetical PlantVillage folder order that PyTorch `ImageFolder` produces, which is how the model was trained.
+## Results: models (field photos, crop-aware ranking, no extra preprocessing)
 
-## How we run it (`backend/ml/classifier.py`)
+| Model | Size | License | Lab top-1 | Field top-1 | Field top-3 | Field F1 | ms/photo |
+|---|---|---|---|---|---|---|---|
+| Original: Daksh159 MobileNetV2 | 9 MB | Apache-2.0 | 95% | 45% | 81% | 0.45 | 17 |
+| **linkanjarad MobileNetV2** | 9 MB | not stated | 95% | **60%** | **85%** | **0.59** | 19 |
+| DINOv2-small | 88 MB | CC-BY-SA-4.0 | 97% | 49% | 84% | 0.47 | 41 |
+| ConvNeXt-tiny | 111 MB | Apache-2.0 | 92% | 49% | 82% | 0.47 | 32 |
 
-1. **Decode:** Pillow opens the image and converts it to RGB. Greyscale, transparent PNG and palette images are handled. Unreadable files return HTTP 400.
-2. **Preprocess:** resize to 224×224, convert to a tensor, and normalise with the ImageNet mean `[0.485, 0.456, 0.406]` and std `[0.229, 0.224, 0.225]`. These are the settings from the author's model card.
-3. **Infer:** CPU only, in a worker thread so the API stays responsive. The model loads once at server startup.
-4. **Rank:** softmax over all 38 classes, keep the top 3.
-5. **Word it carefully:** diseases are shown as "Possible …" ("संभावित …") and healthy classes as "Likely healthy …" ("संभवतः स्वस्थ …").
-6. **Photo-quality check:** before the model's answer is trusted, the photo is checked. It is marked *uncertain* with a "please retake" message if it is blank or flat (grey-level spread below 12), very dark (mean below 25), or tiny (shorter side below 64 px).
-7. **Uncertainty:** if the top confidence is **below 0.50**, the result is marked *uncertain* and the farmer is asked to retake the photo and check with an expert.
-8. **Crop mismatch:** if the model is confident but the predicted crop differs from the farmer's registered crop, the result is flagged.
+- **Without crop-aware ranking** (all 38 classes, as the app did before), field top-1 was 12% for the original model and 29% for linkanjarad. This was the main reason for wrong-crop answers like "apple black rot" on a tomato.
+- **Combining models** (2, 3 or 4 averaged) did **not** beat linkanjarad alone (best combination 57%).
+- **Flip averaging** added +2 points (60% to 62% in the experiment script), so it's on.
 
-**Safety:**
-- Weights load with `torch.load(weights_only=True)`, so no arbitrary code runs from the file.
-- The SHA-256 is verified.
-- The head is built exactly as in training and loaded with `strict=True`, so a mismatch fails loudly.
+## Results: preprocessing (best model, field photos)
 
-The community Space mentioned above uses a plain `Linear` head with `strict=False`. That can silently leave the final layer untrained, and we deliberately don't copy it.
+| Setting | Field top-1 | Verdict |
+|---|---|---|
+| None / EXIF fix | 60% | ✅ EXIF fix kept (needed for phone photos, harmless here) |
+| + leaf crop (OpenCV segmentation, keeps yellow and brown lesions) | 58% | ❌ off (no gain) |
+| + leaf crop + background removal | 56% | ❌ off |
+| + CLAHE (lightness-only contrast) | 52% | ❌ off (hurts; also hurt lab accuracy, 95% to 79%) |
+| + grey-world white balance | 57% | ❌ off |
+| + denoise (bilateral) | 61% | ➖ off (+1 point is within noise) |
+
+All of these steps are implemented in `backend/ml/preprocess.py` and can be switched on. They're off because they didn't improve real-world accuracy for this model, which was trained on unprocessed photos.
+
+## Final pipeline, as the app runs it (`scripts/eval_model.py`)
+
+| | Lab (38) | Field (89) |
+|---|---|---|
+| **Before** (original model, all 38 classes) | 95% top-1 | **12% top-1** |
+| Original model + new pipeline | 97% top-1 | 45% top-1, 81% top-3, F1 0.43 |
+| **After** (new model + new pipeline) | 95% top-1, 100% top-3, F1 0.96 | **60% top-1, 85% top-3, F1 0.60** |
+
+How the uncertainty flags behave on field photos (calibrated on this set):
+
+| Result | Photos | Accuracy |
+|---|---|---|
+| Not flagged | 49 | 55% |
+| Flagged: close top-2 (gap under 0.3) | 23 | 43% |
+| Flagged: may not be the registered crop | 4 | 75% |
+| Single-class crop (blueberry, raspberry, soybean, squash, orange) | 13 | 100% (trivial: only one possible answer) |
+
+The thresholds were calibrated on the same 89 photos they're reported on, so expect slightly weaker separation on new photos.
 
 ## Known limitations (say these to judges)
 
-- **Lab images, not field photos.** PlantVillage photos show one leaf on a plain background. Accuracy usually drops on real field photos with clutter, shadows, several leaves or other symptoms. **We have not measured field accuracy.**
-- **Confidently wrong on non-leaf photos.** In our test, a plain green rectangle scored **92% "Septoria leaf spot"**. Like most classifiers trained on one kind of image, the model has no notion of "this isn't a leaf", so confidence alone can't detect it. The photo-quality check catches blank, dark and tiny photos, but **not** every non-leaf photo (a face or a wall can still get a disease label). A proper fix is a separate "is this a leaf?" model. It's planned, not built.
-- **Only 38 classes.** A disease outside this list, or a nutrient deficiency, gets forced into the nearest class. The uncertainty threshold and ranked possibilities soften this but don't remove it.
-- **Healthy-vs-disease only per leaf.** It doesn't measure severity or count lesions.
-- **95% is the author's number on similar images.** It is not a claim about real-world performance.
-- **The threshold (0.50) is a starting guess.** Tune it with `scripts/try_model.py` on real photos.
+- **60% on real photos means 4 in 10 field photos get the wrong top answer.** The right answer is in the top 3 for 85%. That's why the app always shows 3 possibilities, calls them "possible", and asks the farmer to verify.
+- **Telling crops apart is weak on field photos.** The "may not be your crop" check catches only about 31% of wrong-crop photos, in exchange for about 4.5% false alarms. The app relies on the crop the farmer registered.
+- **Only 38 PlantVillage classes.** Nutrient deficiencies, pests other than spider mites, and crops like rice, wheat, cotton or sugarcane aren't covered.
+- **Non-leaf photos** (faces, walls) can still get a disease label if they pass the quality checks.
+- **The license of the default model isn't stated.** DINOv2-small (CC-BY-SA) and ConvNeXt-tiny (Apache-2.0) are licensed alternatives at about 49–52% field accuracy.
 
-## Planned evaluation (post-hackathon)
+## What would improve it most (post-hackathon)
 
-- Top-1 and top-3 accuracy on a field-image set, such as PlantDoc, for the overlapping classes.
-- Calibration check: are 0.8-confidence predictions right about 80% of the time?
-- Grad-CAM heatmaps to show which part of the leaf drove the prediction (stretch goal).
+1. **Fine-tune on field photos** (PlantDoc plus photos from local farms). This is the single biggest lever, since all public models here were trained only on lab photos.
+2. Add crops and conditions that matter in India: rice, wheat, cotton, sugarcane, and nutrient deficiencies.
+3. Add a small "is this a leaf?" check before the disease model.
 
 ## Commands
 
 ```bash
-python scripts/download_model.py                     # download + verify weights (once per laptop)
-python scripts/try_model.py data/samples/*.jpg       # try it on photos
-pytest tests/test_classifier.py                      # real-model tests
+python scripts/download_model.py            # selected model (--all for every candidate)
+python scripts/fetch_eval_images.py         # lab photos
+python scripts/fetch_field_images.py        # field photos (PlantDoc)
+python scripts/eval_model.py                # the app's pipeline: top-1/top-3/F1/flags/speed
+python scripts/eval_pipeline.py             # model × preprocessing grid
 ```

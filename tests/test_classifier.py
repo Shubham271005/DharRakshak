@@ -1,19 +1,26 @@
 """
-Tests for the REAL image model (Component 4).
+Tests for the REAL image model + preprocessing (accuracy upgrade).
 
-Skipped automatically when PyTorch isn't installed or the weights haven't
-been downloaded (python scripts/download_model.py), so the rest of the
-suite still runs on any laptop.
+Skipped automatically when PyTorch/transformers aren't installed or the
+selected model hasn't been downloaded (python scripts/download_model.py).
+The accuracy guards also need the evaluation photos
+(scripts/fetch_eval_images.py, scripts/fetch_field_images.py).
 """
 
 import io
+from pathlib import Path
 
+import numpy as np
 import pytest
 
 from backend.ml import classifier as clf
+from backend.ml.preprocess import preprocess
 
-torch = pytest.importorskip("torch")
-pytestmark = pytest.mark.skipif(not clf.weights_path().exists(), reason="model weights not downloaded")
+pytest.importorskip("torch")
+pytest.importorskip("transformers")
+pytestmark = pytest.mark.skipif(not clf.weights_path().exists(), reason="selected model not downloaded")
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture(scope="module")
@@ -21,78 +28,121 @@ def model():
     return clf.PlantDiseaseClassifier()
 
 
-def make_png(color=(60, 140, 60), size=(300, 300)) -> bytes:
+def png(color=(60, 140, 60), size=(300, 300), mode="RGB") -> bytes:
     from PIL import Image
 
     buf = io.BytesIO()
-    Image.new("RGB", size, color).save(buf, format="PNG")
+    Image.new(mode, size, color if mode == "RGB" else None).save(buf, format="PNG")
     return buf.getvalue()
 
 
-def test_weights_match_pinned_checksum():
-    assert clf.sha256_of(clf.weights_path()) == clf.WEIGHTS_SHA256
+def textured_png(size=(320, 320)) -> bytes:
+    """Random noise: detailed enough to pass the quality checks."""
+    from PIL import Image
 
-
-def test_labels_cover_38_classes_with_both_languages():
-    labels = clf.load_labels()
-    assert len(labels) == 38
-    assert all(l.name.en and l.name.hi for l in labels)
-    assert sum(1 for l in labels if l.crop == "tomato") == 10
+    rng = np.random.default_rng(0)
+    buf = io.BytesIO()
+    Image.fromarray(rng.integers(0, 255, (*size, 3), dtype=np.uint8)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def test_probabilities_are_a_distribution(model):
-    probs = model.probabilities(make_png())
-    assert len(probs) == 38
-    assert abs(sum(probs) - 1.0) < 1e-4
+    probs = model.probabilities(textured_png())
+    assert len(probs) == 38 and abs(sum(probs) - 1.0) < 1e-4
 
 
-def make_textured_png(size=(300, 300)) -> bytes:
-    """Random noise: detailed enough to pass the photo-quality gate."""
-    import random
-    from PIL import Image
-
-    random.seed(0)
-    img = Image.new("RGB", size)
-    img.putdata([(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for _ in range(size[0] * size[1])])
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
-
-
-def test_detailed_photo_passes_quality_gate(model):
-    from PIL import Image
-
-    assert model.is_poor_photo(Image.open(io.BytesIO(make_textured_png())).convert("RGB")) is False
-
-
-def test_classify_returns_sorted_top3(model):
-    out = model.classify(make_png())
+def test_registered_crop_limits_predictions_to_that_crop(model):
+    out = model.classify(textured_png(), registered_crop="tomato")
+    assert all(p.label.startswith("Tomato___") for p in out.predictions)
     confs = [p.confidence for p in out.predictions]
-    assert len(confs) == 3 and confs == sorted(confs, reverse=True)
-    assert out.predictions[0].label == out.top.label
+    assert confs == sorted(confs, reverse=True) and sum(confs) <= 1.0001
+    assert out.registered_crop_mass is not None
 
 
-def test_blank_photo_is_marked_uncertain(model):
-    # A plain green image is not a leaf; the model alone is overconfident on it.
-    out = model.classify(make_png(color=(70, 130, 60), size=(400, 300)))
-    assert out.uncertain is True
-    assert out.uncertainty_message == clf.POOR_PHOTO_MESSAGE
+def test_without_crop_all_classes_are_ranked(model):
+    out = model.classify(textured_png())
+    assert len(out.predictions) == 3 and out.registered_crop_mass is None
 
 
-def test_tiny_and_dark_photos_are_marked_uncertain(model):
-    assert model.classify(make_png(size=(40, 40))).uncertain is True
-    assert model.classify(make_png(color=(5, 8, 5))).uncertain is True
+def test_blank_photo_is_flagged_as_poor_quality(model):
+    out = model.classify(png(size=(400, 300)), registered_crop="tomato")
+    assert out.uncertain and out.uncertainty_message == clf.POOR_PHOTO_MESSAGE
+    assert "blank" in out.quality_issues
 
 
-def test_handles_odd_image_modes(model):
-    from PIL import Image
+def test_tiny_and_dark_photos_are_flagged(model):
+    assert "too_small" in model.classify(png(size=(40, 40))).quality_issues
+    assert "too_dark" in model.classify(png(color=(5, 8, 5))).quality_issues
 
-    for mode in ("L", "RGBA", "P"):  # greyscale, transparent PNG, palette
-        buf = io.BytesIO()
-        Image.new(mode, (64, 64)).save(buf, format="PNG")
-        assert len(model.classify(buf.getvalue()).predictions) == 3
+
+def test_single_class_crop_is_flagged_as_limited(model):
+    # The model knows only "healthy blueberry", so it can't tell blueberry diseases apart.
+    photos = sorted((ROOT / "data").glob("eval*/04__Blueberry___healthy__*.jpg"))
+    if not photos:
+        pytest.skip("no blueberry photo downloaded")
+    out = model.classify(photos[0].read_bytes(), registered_crop="blueberry")
+    assert out.uncertain
+    assert "only one condition" in out.uncertainty_message.en or "does not look much like" in out.uncertainty_message.en
+
+
+def test_odd_image_modes_work(model):
+    for mode in ("L", "RGBA", "P"):
+        assert model.classify(png(mode=mode, size=(128, 128)), registered_crop="tomato").predictions
 
 
 def test_garbage_bytes_raise_invalid_image(model):
     with pytest.raises(clf.InvalidImage):
         model.classify(b"definitely not an image")
+
+
+def test_exif_rotation_is_applied():
+    from PIL import Image
+
+    img = Image.new("RGB", (200, 100))
+    exif = img.getexif()
+    exif[0x0112] = 6  # "rotate 90° clockwise"
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif)
+    rotated = preprocess(Image.open(io.BytesIO(buf.getvalue())), ("exif",)).image
+    assert rotated.size == (100, 200)
+
+
+def test_leaf_crop_keeps_lesions_and_falls_back_safely():
+    from PIL import Image, ImageDraw
+
+    # Green leaf with a brown lesion on a white background.
+    img = Image.new("RGB", (400, 400), (245, 245, 245))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((100, 80, 300, 320), fill=(60, 140, 50))
+    draw.ellipse((180, 180, 230, 230), fill=(120, 80, 30))
+    res = preprocess(img, ("leaf_crop",))
+    assert res.leaf_found and res.crop_box is not None
+    arr = np.asarray(res.image)
+    assert ((arr[..., 0] > 100) & (arr[..., 1] < 100)).any(), "brown lesion must survive the crop"
+    # A plain image has no leaf: the original is returned untouched.
+    plain = preprocess(Image.new("RGB", (300, 300), (240, 240, 240)), ("leaf_crop",))
+    assert not plain.leaf_found and plain.image.size == (300, 300)
+
+
+# ----- accuracy guards (regression protection; measured, not assumed) ----------
+
+def _accuracy(model, folder: Path) -> float:
+    files = sorted(folder.glob("*.jpg"))
+    if len(files) < 20:
+        pytest.skip(f"not enough photos in {folder}")
+    labels = clf.load_labels()
+    correct = 0
+    for f in files:
+        true = labels[int(f.name.split("__")[0])]
+        out = model.classify(f.read_bytes(), registered_crop=true.crop)
+        correct += out.predictions[0].label == true.label
+    return correct / len(files)
+
+
+def test_lab_photo_accuracy(model):
+    assert _accuracy(model, ROOT / "data" / "eval") >= 0.90
+
+
+def test_field_photo_accuracy(model):
+    # Measured 62% (crop-aware) for the default model; the original model got 45% (12% without crop info).
+    assert _accuracy(model, ROOT / "data" / "eval_field") >= 0.55

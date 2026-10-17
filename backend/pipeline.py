@@ -29,10 +29,9 @@ from shared.contract import AnalysisResult, CropProfile, Weather
 
 def build_analysis(crop: CropProfile, output: ClassifierOutput, weather: Weather | None) -> AnalysisResult:
     """Combine model output, weather and crop profile into one result."""
-    # The photo looks like a different crop than the farmer registered. Only
-    # flagged when the model is reasonably confident; otherwise the
-    # "uncertain" message already covers it.
-    crop_mismatch = (not output.uncertain) and output.top.crop != crop.crop_type
+    # The classifier ranks only the registered crop's classes and flags a
+    # mismatch when the photo puts almost no weight on that crop.
+    crop_mismatch = output.crop_mismatch
 
     facts = Facts(
         crop=crop,
@@ -62,6 +61,6 @@ def build_analysis(crop: CropProfile, output: ClassifierOutput, weather: Weather
 
 def run_analysis(crop: CropProfile, image_bytes: bytes, classifier: PlantDiseaseClassifier) -> AnalysisResult:
     """Full pipeline for one photo. Raises InvalidImage for unreadable files."""
-    output = classifier.classify(image_bytes)
+    output = classifier.classify(image_bytes, registered_crop=crop.crop_type)
     weather = get_weather(crop.location.latitude, crop.location.longitude)
     return build_analysis(crop, output, weather)

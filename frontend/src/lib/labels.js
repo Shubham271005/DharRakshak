@@ -1,33 +1,28 @@
-// Display names for crops and growth stages in every language.
+// Crop and growth-stage names for the UI, in every language.
+//
+// The names live in shared/i18n/<lang>.json as crop_<key> / stage_<key>, so
+// they are translated with everything else (scripts/translate_content.py).
 // Crop keys MUST match the "crop" field in shared/content/labels.json —
-// these are exactly the 14 crops the image model (Component 4) recognises.
-// Most common crops for the demo are listed first.
+// exactly the 14 crops the image model recognises. Order = order in the form.
+import { languageChain } from '../i18n/languages.js'
+import { UI_TEXT } from '../i18n/uiText.js'
 
-export const CROP_OPTIONS = {
-  tomato: { en: 'Tomato', hi: 'टमाटर' },
-  potato: { en: 'Potato', hi: 'आलू' },
-  corn: { en: 'Maize (corn)', hi: 'मक्का' },
-  pepper_bell: { en: 'Bell pepper', hi: 'शिमला मिर्च' },
-  soybean: { en: 'Soybean', hi: 'सोयाबीन' },
-  grape: { en: 'Grape', hi: 'अंगूर' },
-  apple: { en: 'Apple', hi: 'सेब' },
-  orange: { en: 'Orange (citrus)', hi: 'संतरा' },
-  peach: { en: 'Peach', hi: 'आड़ू' },
-  cherry: { en: 'Cherry', hi: 'चेरी' },
-  strawberry: { en: 'Strawberry', hi: 'स्ट्रॉबेरी' },
-  squash: { en: 'Squash', hi: 'स्क्वैश' },
-  blueberry: { en: 'Blueberry', hi: 'ब्लूबेरी' },
-  raspberry: { en: 'Raspberry', hi: 'रास्पबेरी' },
-}
+export const CROP_OPTIONS = [
+  'tomato', 'potato', 'corn', 'pepper_bell', 'soybean', 'grape', 'apple',
+  'orange', 'peach', 'cherry', 'strawberry', 'squash', 'blueberry', 'raspberry',
+].reduce((acc, key) => ({ ...acc, [key]: true }), {})
 
 // Must match `CropStage` in shared/contract.py.
-export const STAGE_LABELS = {
-  seedling: { en: 'Seedling', hi: 'पौध' },
-  vegetative: { en: 'Vegetative growth', hi: 'बढ़वार' },
-  flowering: { en: 'Flowering', hi: 'फूल आना' },
-  fruiting: { en: 'Fruiting', hi: 'फल लगना' },
-  maturity: { en: 'Maturity', hi: 'पकना' },
+export const STAGE_LABELS = ['seedling', 'vegetative', 'flowering', 'fruiting', 'maturity']
+  .reduce((acc, key) => ({ ...acc, [key]: true }), {})
+
+function lookup(key, lang, fallback) {
+  for (const code of languageChain(lang)) {
+    const text = UI_TEXT[code]?.[key]
+    if (text) return text
+  }
+  return fallback
 }
 
-export const cropLabel = (key, lang) => CROP_OPTIONS[key]?.[lang] ?? key
-export const stageLabel = (key, lang) => STAGE_LABELS[key]?.[lang] ?? key
+export const cropLabel = (key, lang) => lookup(`crop_${key}`, lang, key)
+export const stageLabel = (key, lang) => lookup(`stage_${key}`, lang, key)

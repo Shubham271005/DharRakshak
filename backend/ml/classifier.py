@@ -1,217 +1,188 @@
 """
-Pretrained plant-disease image classifier (Component 4, feature F1).
+Plant-disease image classifier (feature F1) — upgraded for real-world photos.
 
-Model: Daksh159/plant-disease-mobilenetv2 on Hugging Face (Apache-2.0).
-MobileNetV2 trained on the PlantVillage dataset, 38 classes, 224×224 input.
-Full details and limitations: docs/MODEL_CARD.md.
+WHY THIS CHANGED: on 89 real field photos (PlantDoc), the original model
+(Daksh159 MobileNetV2) got only 12% top-1 — it ranked all 38 classes and
+often answered with a different crop entirely. Measured with
+scripts/eval_pipeline.py (details: docs/MODEL_CARD.md), the setup below
+reaches 62% top-1 / 85% top-3 on the same photos:
 
-Pipeline for one photo:
-    bytes ─► decode (Pillow) ─► RGB ─► resize 224×224 ─► tensor ─► ImageNet
-    normalise ─► MobileNetV2 ─► softmax ─► top-3 ─► labels + EN/HI names
-    ─► uncertainty + crop-mismatch checks
-
-Safety choices:
-- Weights are loaded with `torch.load(weights_only=True)`, which refuses
-  to run arbitrary pickled code from the downloaded file.
-- The file's SHA-256 is checked against the pinned value below.
-- The model is built with the SAME head used in training and loaded with
-  `strict=True`, so a mismatch fails loudly instead of silently giving
-  random predictions.
+  1. Model: linkanjarad MobileNetV2 (best real-world accuracy of the 4
+     models tested; same size/speed class). Choose another with
+     DHARRAKSHAK_MODEL in .env — see MODELS below.
+  2. Preprocessing (backend/ml/preprocess.py): EXIF rotation + quality
+     checks (blur, dark, blank, tiny). Leaf crop / CLAHE / white balance /
+     denoise exist but are OFF: they did not help real-world accuracy.
+  3. Flip test-time augmentation: average the photo and its mirror image.
+  4. Crop-aware ranking: the farmer registered their crop, so only that
+     crop's classes are ranked (the single biggest improvement).
+  5. Honest confidence:
+       - uncertain if the top-2 gap (within the crop) is < 0.3,
+         or the photo is blurry/dark/blank/tiny;
+       - "may not be your crop" warning if the photo puts < 0.1% of its
+         probability on the registered crop (calibrated for few false alarms);
+       - crops the model knows only ONE class for (e.g. healthy blueberry)
+         are always flagged as limited support.
 """
 
 from __future__ import annotations
 
-import hashlib
 import io
-import json
+import logging
 import os
 import threading
-import urllib.request
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
+
+from backend.engines.content import load as load_content
+from backend.engines.content import message, per_language
+from backend.ml.classifier_labels import ClassInfo, load_labels  # noqa: F401  (re-exported)
+from backend.ml.preprocess import DEFAULT_STEPS, preprocess
 from shared.contract import LocalizedText, Prediction
 
+log = logging.getLogger("dharrakshak.classifier")
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-LABELS_PATH = REPO_ROOT / "shared" / "content" / "labels.json"
 
 # ---------------------------------------------------------------------------
-# Model source — pinned to an exact Hugging Face revision for reproducibility
+# Available models (pinned revisions). Field accuracy = top-1 on 89 PlantDoc
+# field photos with crop-aware ranking (scripts/eval_pipeline.py).
 # ---------------------------------------------------------------------------
-HF_REPO = "Daksh159/plant-disease-mobilenetv2"
-HF_REVISION = "d3fb2afc90da83086eff06e9088a889b6c43d4a6"
-WEIGHTS_FILENAME = "mobilenetv2_plant.pth"
-WEIGHTS_URL = f"https://huggingface.co/{HF_REPO}/resolve/{HF_REVISION}/{WEIGHTS_FILENAME}"
-WEIGHTS_SHA256 = "26c97b05ef2caf58bce6f901c725926546a887ee50f0a637a363b644ec17f96e"  # from the Hugging Face LFS record
+MODELS: dict[str, dict] = {
+    "linkanjarad-mobilenetv2": {
+        "repo": "linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification",
+        "revision": "c1861579a670fb6232258805b801cd4137cb7176",
+        "files": ["config.json", "pytorch_model.bin"],
+        "license": "not stated by the author ('other') — fine for a hackathon demo, check before commercial use",
+        "field_top1": 0.62,
+    },
+    "dinov2-small": {
+        "repo": "rodynaemad/plant-disease-dinov2-small",
+        "revision": "06ebf5e308e100fd000d738c42b059ebb5f58a16",
+        "files": ["config.json", "preprocessor_config.json", "model.safetensors"],
+        "license": "CC-BY-SA-4.0",
+        "field_top1": 0.52,
+    },
+    "convnext-tiny": {
+        "repo": "JohnSupertramp2026/convnext-tiny-plantvillage",
+        "revision": "3cc0b34afbf5c0c1ddf069bcccca03b407573dc2",
+        "files": ["config.json", "preprocessor_config.json", "model.safetensors"],
+        "license": "Apache-2.0",
+        "field_top1": 0.49,
+    },
+    "daksh-mobilenetv2": {  # the original Component 4 model, kept for comparison
+        "legacy": True,
+        "license": "Apache-2.0",
+        "field_top1": 0.45,
+    },
+}
+DEFAULT_MODEL = "linkanjarad-mobilenetv2"
 
-NUM_CLASSES = 38
-INPUT_SIZE = 224
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
-
-# Below this top-1 confidence the result is shown as "uncertain" and the
-# farmer is asked to retake the photo. 0.5 is a starting point — tune it
-# after testing on real field photos (see docs/MODEL_CARD.md).
-UNCERTAIN_THRESHOLD = 0.50
 TOP_K = 3
-
-# Basic photo-quality gate, applied BEFORE trusting the model. The model was
-# trained only on leaf photos and is often confidently wrong on anything
-# else (a plain green rectangle scored 92% "Septoria leaf spot" in testing).
-# These cheap checks catch blank, flat, tiny or very dark photos; they do NOT
-# detect every non-leaf photo (see docs/MODEL_CARD.md, "Known limitations").
-MIN_SIDE_PX = 64          # smaller than this can't show leaf detail
-MIN_DETAIL_STD = 12.0     # grey-level spread (0–255); below = flat/blank photo
-MIN_BRIGHTNESS = 25.0     # mean grey level; below = far too dark
+USE_FLIP_TTA = True
+# Calibrated on 89 PlantDoc field photos (scripts/eval_model.py):
+# gap < 0.3 → 43% accurate vs 65% otherwise, so the flag is informative.
+MARGIN_THRESHOLD = 0.30          # top-1 minus top-2 (within the crop); below = uncertain
+UNCERTAIN_THRESHOLD = 0.50       # used only when no crop is registered
+# Probability the photo puts on the registered crop; below = "may not be your
+# crop". At 0.02 it falsely warned on 30% of genuine photos; 0.001 keeps false
+# alarms at ~4.5% but only catches ~31% of wrong-crop photos (crop identity is
+# the model's weak spot on field photos — see docs/MODEL_CARD.md).
+CROP_MASS_THRESHOLD = 0.001
 
 
 class ModelNotAvailable(RuntimeError):
-    """Weights are missing or failed verification. The API returns 503."""
+    """Model files are missing. The API returns 503."""
 
 
 class InvalidImage(ValueError):
     """The uploaded bytes are not a readable image. The API returns 400."""
 
 
-def model_dir() -> Path:
-    return Path(os.getenv("DHARRAKSHAK_MODEL_DIR", str(REPO_ROOT / "models" / "plant-disease-mobilenetv2")))
+def selected_model() -> str:
+    name = os.getenv("DHARRAKSHAK_MODEL", DEFAULT_MODEL)
+    if name not in MODELS:
+        raise ValueError(f"DHARRAKSHAK_MODEL={name!r} is not one of {list(MODELS)}")
+    return name
+
+
+def model_folder(name: str) -> Path:
+    if MODELS[name].get("legacy"):
+        return REPO_ROOT / "models" / "plant-disease-mobilenetv2"
+    return REPO_ROOT / "models" / MODELS[name]["repo"].split("/")[1]
 
 
 def weights_path() -> Path:
-    return model_dir() / WEIGHTS_FILENAME
+    """Main weights file of the selected model (used by tests and scripts)."""
+    name = selected_model()
+    if MODELS[name].get("legacy"):
+        return model_folder(name) / "mobilenetv2_plant.pth"
+    files = [f for f in MODELS[name]["files"] if f.endswith((".bin", ".safetensors"))]
+    return model_folder(name) / files[0]
 
 
-def sha256_of(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def download_model(name: str | None = None) -> Path:
+    """Download the selected model at its pinned revision (resumable)."""
+    name = name or selected_model()
+    spec = MODELS[name]
+    if spec.get("legacy"):
+        raise ModelNotAvailable("The legacy model is downloaded by older versions of scripts/download_model.py.")
+    from huggingface_hub import snapshot_download
 
-
-def download_weights(force: bool = False) -> Path:
-    """Download the weights from Hugging Face (resumable) and verify them.
-
-    Called by scripts/download_model.py — NOT at server startup, so a slow
-    network can never block the API from starting.
-    """
-    path = weights_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() and not force and sha256_of(path) == WEIGHTS_SHA256:
-        return path
-
-    partial = path.with_suffix(".part")
-    if path.exists() and not partial.exists():
-        path.replace(partial)  # unverified/incomplete file: resume it instead of starting over
-    start = partial.stat().st_size if partial.exists() else 0
-    request = urllib.request.Request(WEIGHTS_URL, headers={"Range": f"bytes={start}-"} if start else {})
-    with urllib.request.urlopen(request, timeout=60) as resp, partial.open("ab" if start else "wb") as out:
-        while chunk := resp.read(1 << 16):
-            out.write(chunk)
-
-    actual = sha256_of(partial)
-    if actual != WEIGHTS_SHA256:
-        partial.unlink(missing_ok=True)
-        raise ModelNotAvailable(f"Downloaded weights failed the SHA-256 check (got {actual}). Try again.")
-    partial.replace(path)
-    return path
-
-
-# ---------------------------------------------------------------------------
-# Labels
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class ClassInfo:
-    label: str          # raw class name, e.g. "Tomato___Early_blight"
-    crop: str           # crop key, e.g. "tomato"
-    healthy: bool
-    disease_type: str   # fungal | bacterial | viral | insect_spread | pest | healthy
-    name: LocalizedText  # plain name, e.g. {"en": "tomato early blight", ...}
-
-
-@lru_cache(maxsize=1)
-def load_labels() -> tuple[ClassInfo, ...]:
-    raw = json.loads(LABELS_PATH.read_text(encoding="utf-8"))["classes"]
-    if len(raw) != NUM_CLASSES:
-        raise ValueError(f"labels.json has {len(raw)} classes, expected {NUM_CLASSES}")
-    return tuple(
-        ClassInfo(label=c["label"], crop=c["crop"], healthy=c["healthy"],
-                  disease_type=c["type"], name=LocalizedText(**c["name"]))
-        for c in raw
-    )
+    folder = model_folder(name)
+    snapshot_download(spec["repo"], revision=spec["revision"], allow_patterns=spec["files"], local_dir=folder)
+    return folder
 
 
 def display_name(info: ClassInfo) -> LocalizedText:
     """Farmer-facing wording. Never claims certainty: 'Possible …' / 'Likely …'."""
-    if info.healthy:
-        return LocalizedText(en=f"Likely {info.name.en}", hi=f"संभवतः {info.name.hi}")
-    return LocalizedText(en=f"Possible {info.name.en}", hi=f"संभावित {info.name.hi}")
+    key = "prediction_likely_healthy" if info.healthy else "prediction_possible"
+    return message(key, per_language(lambda lang: {"name": info.name.in_lang(lang)}))
 
 
-# ---------------------------------------------------------------------------
-# The classifier
-# ---------------------------------------------------------------------------
+def crop_name(crop: str) -> dict[str, dict[str, str]]:
+    """{lang: {"crop": name}} for message templates."""
+    entry = load_content("crops")["crops"].get(crop)
+    names = LocalizedText(**entry) if entry else None
+    return per_language(lambda lang: {"crop": names.in_lang(lang) if names else crop})
+
 
 @dataclass(frozen=True)
 class ClassifierOutput:
-    predictions: list[Prediction]   # top-3, highest first
-    top: ClassInfo                  # details of the top-1 class
+    predictions: list[Prediction]        # top-3 (within the registered crop if known), highest first
+    top: ClassInfo                       # details of the top-1 class
     uncertain: bool
     uncertainty_message: LocalizedText | None
+    crop_mismatch: bool = False          # photo puts almost no weight on the registered crop
+    registered_crop_mass: float | None = None
+    quality_issues: tuple[str, ...] = ()
 
 
-POOR_PHOTO_MESSAGE = LocalizedText(
-    en="This photo looks blank, too dark or too small to check. Please take a clear, close photo "
-       "of one leaf in daylight.",
-    hi="यह तस्वीर खाली, बहुत अँधेरी या बहुत छोटी लग रही है। कृपया दिन की रोशनी में एक पत्ती की "
-       "साफ़, नज़दीक से फोटो लें।",
-)
-
-UNCERTAIN_MESSAGE = LocalizedText(
-    en="The model is not confident about this photo. Please retake it in daylight, "
-       "with one leaf filling most of the frame, and check with a local expert.",
-    hi="मॉडल इस तस्वीर को लेकर आश्वस्त नहीं है। कृपया दिन की रोशनी में, एक पत्ती को फ्रेम में "
-       "बड़ा रखकर दोबारा फोटो लें, और स्थानीय विशेषज्ञ से जाँच कराएँ।",
-)
+POOR_PHOTO_MESSAGE = message("poor_photo")
+UNCERTAIN_MESSAGE = message("uncertain_photo")
 
 
 class PlantDiseaseClassifier:
-    """Loads the model once and classifies leaf photos. Thread-safe for inference."""
+    """Loads the selected model once and classifies leaf photos. Thread-safe."""
 
-    def __init__(self, path: Path | None = None) -> None:
-        # Imported here so the rest of the backend (and its tests) can start
-        # even on a machine where PyTorch isn't installed yet.
+    def __init__(self, model_name: str | None = None) -> None:
         import torch
-        from torch import nn
-        from torchvision import models, transforms
 
-        path = path or weights_path()
-        if not path.exists():
-            raise ModelNotAvailable(
-                f"Model weights not found at {path}. Run: python scripts/download_model.py"
-            )
+        from backend.ml.models import DakshMobileNetV2, HuggingFaceBackend
 
-        self._torch = torch
-        model = models.mobilenet_v2(weights=None)
-        # Same head as in training (see the model card): Dropout + Linear(1280 → 38).
-        model.classifier[1] = nn.Sequential(nn.Dropout(0.2), nn.Linear(model.last_channel, NUM_CLASSES))
-
-        state = torch.load(path, map_location="cpu", weights_only=True)
-        if isinstance(state, dict) and "state_dict" in state:
-            state = state["state_dict"]
-        model.load_state_dict(state, strict=True)
-        model.eval()
-        self._model = model
-
-        self._preprocess = transforms.Compose([
-            transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
-            transforms.ToTensor(),
-            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-        ])
+        self.model_name = model_name or selected_model()
+        folder = model_folder(self.model_name)
+        legacy = MODELS[self.model_name].get("legacy")
+        main_file = folder / ("mobilenetv2_plant.pth" if legacy else
+                              [f for f in MODELS[self.model_name]["files"] if f.endswith((".bin", ".safetensors"))][0])
+        if not main_file.exists():
+            raise ModelNotAvailable(f"Model files not found in {folder}. Run: python scripts/download_model.py")
+        self.backend = DakshMobileNetV2(main_file) if legacy else HuggingFaceBackend(folder)
         self.labels = load_labels()
+        self._crop_of = np.array([c.crop for c in self.labels])
         torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
+        log.info("Image model ready: %s", self.model_name)
 
     @staticmethod
     def _decode(image_bytes: bytes):
@@ -222,52 +193,61 @@ class PlantDiseaseClassifier:
             image.load()
         except (UnidentifiedImageError, OSError) as err:
             raise InvalidImage("The file could not be read as an image.") from err
-        return image.convert("RGB")
+        return image
 
-    @staticmethod
-    def is_poor_photo(image) -> bool:
-        """True for blank/flat, tiny or very dark photos (see constants above)."""
-        from PIL import ImageStat
+    def _probs(self, image) -> np.ndarray:
+        from PIL import ImageOps
 
-        if min(image.size) < MIN_SIDE_PX:
-            return True
-        stats = ImageStat.Stat(image.convert("L"))
-        return stats.stddev[0] < MIN_DETAIL_STD or stats.mean[0] < MIN_BRIGHTNESS
-
-    def _probabilities_for(self, image) -> list[float]:
-        tensor = self._preprocess(image).unsqueeze(0)
-        with self._torch.inference_mode():
-            probs = self._torch.softmax(self._model(tensor), dim=1)[0]
-        return probs.tolist()
+        p = self.backend.probs(image)
+        if USE_FLIP_TTA:
+            p = (p + self.backend.probs(ImageOps.mirror(image))) / 2
+        return p
 
     def probabilities(self, image_bytes: bytes) -> list[float]:
-        """All 38 class probabilities for one image (index order = labels.json)."""
-        return self._probabilities_for(self._decode(image_bytes))
+        """All 38 class probabilities (labels.json order), after preprocessing."""
+        return self._probs(preprocess(self._decode(image_bytes), DEFAULT_STEPS).image).tolist()
 
-    def classify(self, image_bytes: bytes) -> ClassifierOutput:
-        image = self._decode(image_bytes)
-        poor_photo = self.is_poor_photo(image)
-        probs = self._probabilities_for(image)
-        ranked = sorted(range(NUM_CLASSES), key=lambda i: probs[i], reverse=True)[:TOP_K]
-        predictions = [
-            Prediction(
-                label=self.labels[i].label,
-                display_name=display_name(self.labels[i]),
-                confidence=round(probs[i], 4),
-            )
-            for i in ranked
-        ]
-        if poor_photo:
-            message = POOR_PHOTO_MESSAGE
-        elif probs[ranked[0]] < UNCERTAIN_THRESHOLD:
-            message = UNCERTAIN_MESSAGE
+    def classify(self, image_bytes: bytes, registered_crop: str | None = None) -> ClassifierOutput:
+        prepared = preprocess(self._decode(image_bytes), DEFAULT_STEPS)
+        probs = self._probs(prepared.image)
+
+        crop_classes = self._crop_of == registered_crop
+        mass = None
+        if registered_crop and crop_classes.any():
+            mass = float(probs[crop_classes].sum())
+            ranked_probs = np.where(crop_classes, probs, 0.0) / max(mass, 1e-9)  # renormalise within the crop
         else:
-            message = None
+            ranked_probs = probs
+        order = [int(i) for i in np.argsort(-ranked_probs) if ranked_probs[i] > 0][:TOP_K]
+        predictions = [
+            Prediction(label=self.labels[i].label, display_name=display_name(self.labels[i]),
+                       confidence=round(float(ranked_probs[i]), 4))
+            for i in order
+        ]
+        top_p = ranked_probs[order[0]]
+        second = ranked_probs[order[1]] if len(order) > 1 else 0.0
+
+        crop_mismatch = mass is not None and mass < CROP_MASS_THRESHOLD
+        single_class_crop = registered_crop is not None and int(crop_classes.sum()) == 1
+        if prepared.poor_quality:
+            msg = POOR_PHOTO_MESSAGE
+        elif crop_mismatch:
+            msg = message("not_registered_crop", crop_name(registered_crop))
+        elif single_class_crop:
+            msg = message("limited_crop_support", crop_name(registered_crop))
+        elif (top_p - second) < MARGIN_THRESHOLD or (mass is None and top_p < UNCERTAIN_THRESHOLD):
+            msg = UNCERTAIN_MESSAGE
+        else:
+            msg = None
+
         return ClassifierOutput(
             predictions=predictions,
-            top=self.labels[ranked[0]],
-            uncertain=message is not None,
-            uncertainty_message=message,
+            top=self.labels[order[0]],
+            uncertain=msg is not None,
+            uncertainty_message=msg,
+            crop_mismatch=crop_mismatch,
+            registered_crop_mass=mass,
+            quality_issues=tuple(prepared.quality_issues),
         )
 
 

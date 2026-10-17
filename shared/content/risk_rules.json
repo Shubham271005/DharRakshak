@@ -1,104 +1,169 @@
 {
   "_about": "Risk rules for backend/engines/risk.py (F3). Each rule adds `points` and a reason sentence (EN/HI) when its condition is true. Placeholders in {braces} are filled from the analysis. These are transparent HEURISTICS chosen by the team for the hackathon MVP — they are not validated agronomy and should be reviewed by an agricultural expert. The result is always presented as an estimate.",
-
   "thresholds": {
-    "high_confidence": 0.80,
+    "high_confidence": 0.8,
     "wet_recent_rain_mm": 10,
     "wet_recent_humidity_pct": 80,
     "rain_forecast_mm": 5,
     "rain_forecast_chance_pct": 60,
     "hot_dry_temp_c": 28,
     "hot_dry_humidity_pct": 60,
-    "sensitive_stages": ["flowering", "fruiting"]
+    "sensitive_stages": [
+      "flowering",
+      "fruiting"
+    ]
   },
-
   "levels": {
     "_about": "Total score → level. score >= elevated → elevated; >= moderate → moderate; else low.",
     "moderate": 3,
     "elevated": 5,
     "names": {
-      "low": { "en": "low", "hi": "कम" },
-      "moderate": { "en": "moderate", "hi": "मध्यम" },
-      "elevated": { "en": "elevated", "hi": "ऊँची" }
+      "low": {
+        "en": "low",
+        "hi": "कम",
+        "mr": "कमी",
+        "pa": "ਘੱਟ",
+        "bgc": "कम",
+        "bho": "कम"
+      },
+      "moderate": {
+        "en": "moderate",
+        "hi": "मध्यम",
+        "mr": "मध्यम",
+        "pa": "ਮੱਧਮ",
+        "bgc": "मध्यम",
+        "bho": "मध्यम"
+      },
+      "elevated": {
+        "en": "elevated",
+        "hi": "ऊँची",
+        "mr": "उच्च",
+        "pa": "ਉੱਚਾ",
+        "bgc": "ऊँचा",
+        "bho": "ऊँचा"
+      }
     }
   },
-
   "rules": {
     "disease_high_confidence": {
       "points": 3,
       "text": {
         "en": "The photo shows signs that closely match {disease} ({conf} model confidence).",
-        "hi": "तस्वीर के लक्षण इस समस्या से काफ़ी मिलते-जुलते हैं: {disease} (मॉडल का भरोसा {conf})।"
+        "hi": "तस्वीर के लक्षण इस समस्या से काफ़ी मिलते-जुलते हैं: {disease} (मॉडल का भरोसा {conf})।",
+        "mr": "या फोटोतील लक्षणे {disease} शी खूप जुळतात ({conf} मॉडेलचा विश्वास).",
+        "pa": "ਫੋਟੋ ਵਿੱਚ ਲੱਛਣ {disease} ਨਾਲ ਬਹੁਤ ਮਿਲਦੇ ਹਨ (ਮਾਡਲ ਵਿਸ਼ਵਾਸ {conf})।",
+        "bgc": "फोटो में दिखे लक्षण {disease} सै घणा मिलते-जुलते सै ({conf} मॉडल भरोसा)।",
+        "bho": "फोटो में देखल लक्षण {disease} से बहुत मिलत बा (मॉडल के भरोसा {conf})।"
       }
     },
     "disease_possible": {
       "points": 2,
       "text": {
         "en": "The photo shows signs that may match {disease} ({conf} model confidence).",
-        "hi": "तस्वीर के लक्षण इस समस्या से मिलते-जुलते हो सकते हैं: {disease} (मॉडल का भरोसा {conf})।"
+        "hi": "तस्वीर के लक्षण इस समस्या से मिलते-जुलते हो सकते हैं: {disease} (मॉडल का भरोसा {conf})।",
+        "mr": "या फोटोतील लक्षणे {disease} शी जुळू शकतात ({conf} मॉडेलचा विश्वास).",
+        "pa": "ਫੋਟੋ ਵਿੱਚ ਲੱਛਣ {disease} ਨਾਲ ਮਿਲ ਸਕਦੇ ਹਨ (ਮਾਡਲ ਵਿਸ਼ਵਾਸ {conf})।",
+        "bgc": "फोटो में दिखे लक्षण {disease} सै मिलते-जुलते हो सकें सै ({conf} मॉडल भरोसा)।",
+        "bho": "फोटो में देखल लक्षण {disease} से मिल सकत बा (मॉडल के भरोसा {conf})।"
       }
     },
     "unclear_photo": {
       "points": 1,
       "text": {
         "en": "The photo is unclear, so the leaf could not be checked reliably.",
-        "hi": "तस्वीर साफ़ नहीं है, इसलिए पत्ती की भरोसेमंद जाँच नहीं हो सकी।"
+        "hi": "तस्वीर साफ़ नहीं है, इसलिए पत्ती की भरोसेमंद जाँच नहीं हो सकी।",
+        "mr": "फोटो अस्पष्ट आहे, त्यामुळे पानाची खात्रीने तपासणी होऊ शकली नाही.",
+        "pa": "ਫੋਟੋ ਢੁੱਕਵੀਂ ਨਹੀਂ, ਇਸ ਕਰਕੇ ਪੱਤੀ ਦੀ ਜਾਂਚ ਭਰੋਸੇਯੋਗ ਤਰੀਕੇ ਨਾਲ ਨਹੀਂ ਹੋ ਸਕੀ।",
+        "bgc": "फोटो साफ़ ना सै, इस कारण पत्ती की भरोसेमंद जाँच ना हो पाई।",
+        "bho": "फोटो साफ़ नइखे, एसे पत्ता के भरोसेमंद जाँच ना हो पावता।"
       }
     },
     "looks_healthy": {
       "points": 0,
       "text": {
         "en": "The leaf looks healthy in this photo ({conf} model confidence).",
-        "hi": "इस तस्वीर में पत्ती स्वस्थ दिख रही है (मॉडल का भरोसा {conf})।"
+        "hi": "इस तस्वीर में पत्ती स्वस्थ दिख रही है (मॉडल का भरोसा {conf})।",
+        "mr": "या फोटोमध्ये पान आरोग्यदायी दिसते ({conf} मॉडेलचा विश्वास).",
+        "pa": "ਇਸ ਫੋਟੋ ਵਿੱਚ ਪੱਤੀ ਸਿਹਤਮੰਦ ਲੱਗਦੀ ਹੈ (ਮਾਡਲ ਵਿਸ਼ਵਾਸ {conf})।",
+        "bgc": "इस फोटो में पत्ती ठीक दिख री सै ({conf} मॉडल भरोसा)।",
+        "bho": "ए फोटो में पत्ता स्वस्थ लागत बा (मॉडल के भरोसा {conf})।"
       }
     },
     "wet_recent_disease": {
       "points": 2,
       "text": {
         "en": "Wet weather recently ({rain} mm rain, {humidity}% humidity in the last 3 days) can help {disease} spread.",
-        "hi": "हाल का नम मौसम (पिछले 3 दिनों में {rain} मिमी बारिश, {humidity}% नमी) इस समस्या ({disease}) को फैलने में मदद कर सकता है।"
+        "hi": "हाल का नम मौसम (पिछले 3 दिनों में {rain} मिमी बारिश, {humidity}% नमी) इस समस्या ({disease}) को फैलने में मदद कर सकता है।",
+        "mr": "अलीकडील ओला हवामान ({rain} मिमी पाऊस, मागील ३ दिवसांत {humidity}% आर्द्रता) {disease} चा प्रसार होण्यास मदत करू शकते.",
+        "pa": "ਹਾਲ ਹੀ ਵਿੱਚ ਨਮੀ ਵਾਲਾ ਮੌਸਮ ({rain} ਮਿਮੀ ਬਾਰਿਸ਼, ਪਿਛਲੇ 3 ਦਿਨਾਂ ਵਿੱਚ {humidity}% ਨਮੀ) {disease} ਦੇ ਫੈਲਣ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹੈ।",
+        "bgc": "हाल में बरसात वाला मौसम ({rain} मिमी बारिश, पिछले 3 दिनां में {humidity}% नमी) {disease} ने फेलाण में मदद कर सके सै।",
+        "bho": "हाल में बरसात (पिछला 3 दिन में {rain} मिमी बरसात, {humidity}% नमी) {disease} के फइलाव में मदद कर सकेला।"
       }
     },
     "rain_forecast_disease": {
       "points": 1,
       "text": {
         "en": "More rain is expected in the next 3 days (about {rain_next} mm, up to {chance}% chance).",
-        "hi": "अगले 3 दिनों में और बारिश की संभावना है (लगभग {rain_next} मिमी, अधिकतम {chance}% संभावना)।"
+        "hi": "अगले 3 दिनों में और बारिश की संभावना है (लगभग {rain_next} मिमी, अधिकतम {chance}% संभावना)।",
+        "mr": "पुढील ३ दिवसांत अधिक पाऊस अपेक्षित आहे (सुमारे {rain_next} मिमी, {chance}% शक्यता).",
+        "pa": "ਅਗਲੇ 3 ਦਿਨਾਂ ਵਿੱਚ ਹੋਰ ਬਾਰਿਸ਼ ਦੀ ਉਮੀਦ ਹੈ (ਲਗਭਗ {rain_next} ਮਿਮੀ, {chance}% ਤੱਕ ਸੰਭਾਵਨਾ)।",
+        "bgc": "आगले 3 दिनां में और बरसात की उम्मीद सै (लगभग {rain_next} मिमी, {chance}% तक संभावना)।",
+        "bho": "अगिला 3 दिन में अउरी बरसात के संभावना बा (लगभग {rain_next} मिमी, {chance}% तक)।"
       }
     },
     "hot_dry_pest": {
       "points": 2,
       "text": {
         "en": "Hot, dry weather ({temp}°C, {humidity}% humidity) favours spider mites.",
-        "hi": "गर्म और सूखा मौसम ({temp}°C, {humidity}% नमी) मकड़ी माइट को बढ़ावा देता है।"
+        "hi": "गर्म और सूखा मौसम ({temp}°C, {humidity}% नमी) मकड़ी माइट को बढ़ावा देता है।",
+        "mr": "गरम, कोरडे हवामान ({temp}°C, {humidity}% आर्द्रता) स्पायडर माइटला वाढवते.",
+        "pa": "ਗਰਮ, ਸੁੱਕਾ ਮੌਸਮ ({temp}°C, {humidity}% ਨਮੀ) ਮਕੜੀ ਮਾਈਟ ਨੂੰ ਵਧਾਉਂਦਾ ਹੈ।",
+        "bgc": "गरम, सूखा मौसम ({temp}°C, {humidity}% नमी) मकड़ी माइट ने बढ़ावा दे सै।",
+        "bho": "गरम, सूखा मौसम ({temp}°C, {humidity}% नमी) मकड़ी माइट के बढ़ावा देला।"
       }
     },
     "wet_recent_healthy": {
       "points": 1,
       "text": {
         "en": "Recent wet weather ({rain} mm rain, {humidity}% humidity) can favour leaf diseases, so keep watching.",
-        "hi": "हाल का नम मौसम ({rain} मिमी बारिश, {humidity}% नमी) पत्ती के रोगों को बढ़ावा दे सकता है, इसलिए नज़र रखें।"
+        "hi": "हाल का नम मौसम ({rain} मिमी बारिश, {humidity}% नमी) पत्ती के रोगों को बढ़ावा दे सकता है, इसलिए नज़र रखें।",
+        "mr": "अलीकडचा ओला हवामान ({rain} मिमी पाऊस, {humidity}% आर्द्रता) पानांच्या रोगांना चालना देऊ शकतो, त्यामुळे लक्ष ठेवा.",
+        "pa": "ਹਾਲ ਹੀ ਵਿੱਚ ਨਮੀ ਵਾਲਾ ਮੌਸਮ ({rain} ਮਿਮੀ ਬਾਰਿਸ਼, {humidity}% ਨਮੀ) ਪੱਤਿਆਂ ਦੇ ਰੋਗਾਂ ਨੂੰ ਵਧਾ ਸਕਦਾ ਹੈ, ਇਸ ਲਈ ਧਿਆਨ ਰੱਖੋ।",
+        "bgc": "हाल का भीगा मौसम ({rain} मिमी बारिश, {humidity}% नमी) पत्ती के रोगां ने बढ़ा सके सै, इसते ध्यान रखो।",
+        "bho": "हाल के भींजल मौसम ({rain} मिमी बरखा, {humidity}% नमी) पत्ता के रोगन के बढ़ावा दे सकेला, एसे धियान रखीं।"
       }
     },
     "sensitive_stage": {
       "points": 1,
       "text": {
         "en": "The crop is at the {stage} stage, when problems can affect the harvest more.",
-        "hi": "फसल {stage} अवस्था में है, जब समस्याएँ उपज पर ज़्यादा असर डाल सकती हैं।"
+        "hi": "फसल {stage} अवस्था में है, जब समस्याएँ उपज पर ज़्यादा असर डाल सकती हैं।",
+        "mr": "फसल {stage} टप्प्यात आहे, जेव्हा समस्या पिकाच्या उत्पन्नावर जास्त परिणाम करू शकतात.",
+        "pa": "ਫਸਲ {stage} ਪੜਾਅ 'ਤੇ ਹੈ, ਜਦੋਂ ਸਮੱਸਿਆਵਾਂ ਫਸਲ ਦੀ ਕਟਾਈ 'ਤੇ ਵੱਧ ਅਸਰ ਪਾ ਸਕਦੀਆਂ ਹਨ।",
+        "bgc": "फसल थारे {stage} पड़ाव पे सै, जिब्बे समस्यां फसल की फसल पर जादा असर कर सकें सै।",
+        "bho": "फसल {stage} अवस्था में बा, जब समस्या फसल के फसल पर ज़्यादा असर डाल सकेला।"
       }
     },
     "crop_mismatch": {
       "points": 0,
       "text": {
         "en": "The photo looks like a different crop than the one in your profile.",
-        "hi": "तस्वीर आपकी प्रोफ़ाइल वाली फसल से अलग फसल की लग रही है।"
+        "hi": "तस्वीर आपकी प्रोफ़ाइल वाली फसल से अलग फसल की लग रही है।",
+        "mr": "फोटो तुमच्या प्रोफाइलमधील पिकापेक्षा वेगळे पिक दिसत आहे.",
+        "pa": "ਫੋਟੋ ਤੁਹਾਡੇ ਪ੍ਰੋਫਾਈਲ ਦੀ ਫਸਲ ਤੋਂ ਵੱਖਰੀ ਲੱਗਦੀ ਹੈ।",
+        "bgc": "फोटो थारी प्रोफ़ाइल की फसल तै अलग फसल दिख री सै।",
+        "bho": "फोटो रउआ प्रोफ़ाइल में लिखल फसल से अलग फसल जइसन लागत बा।"
       }
     },
     "weather_unavailable": {
       "points": 0,
       "text": {
         "en": "Weather data was unavailable, so this estimate is based on the photo and crop stage only.",
-        "hi": "मौसम की जानकारी उपलब्ध नहीं थी, इसलिए यह अनुमान केवल तस्वीर और फसल की अवस्था पर आधारित है।"
+        "hi": "मौसम की जानकारी उपलब्ध नहीं थी, इसलिए यह अनुमान केवल तस्वीर और फसल की अवस्था पर आधारित है।",
+        "mr": "हवामानाची माहिती उपलब्ध नव्हती, त्यामुळे हा अंदाज फक्त फोटो आणि पिकाच्या टप्प्यावर आधारित आहे.",
+        "pa": "ਮੌਸਮ ਦੀ ਜਾਣਕਾਰੀ ਉਪਲਬਧ ਨਹੀਂ ਸੀ, ਇਸ ਲਈ ਇਹ ਅੰਦਾਜ਼ਾ ਸਿਰਫ਼ ਫੋਟੋ ਅਤੇ ਫਸਲ ਦੇ ਪੜਾਅ 'ਤੇ ਆਧਾਰਿਤ ਹੈ।",
+        "bgc": "मौसम का डेटा ना मिला, इसते ई अनुमान फोटो और फसल के पड़ाव पे ही आधारित सै।",
+        "bho": "मौसम के डाटा उपलब्ध ना रहे, एसे ई अनुमान खाली फोटो आ फसल के अवस्था पर आधारित बा।"
       }
     }
   }

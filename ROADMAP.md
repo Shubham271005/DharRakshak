@@ -344,3 +344,41 @@ All screens work. Each teammate owns their screen's finishing touches, testing a
 | 2 | `frontend/src/screens/AnalysisScreen.jsx` | Choosing and testing demo photos, clickable history, bar animation, Hindi review |
 | 3 | `frontend/src/screens/FinanceScreen.jsx` | Checking scheme text against official sites, repayment countdown, Hindi review, ticking a document live |
 | 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Mic and voice testing on laptop and phone, copy-answer button, consistent styling, Hindi review |
+
+---
+
+## ✅ Upgrade 1 — Real-world accuracy, redesign, 6 languages, voice
+
+**Why:** on real phone photos the original model often answered with the wrong crop (for example "apple black rot" on a tomato). Measured on 89 real field photos (PlantDoc), it scored **12% top-1**.
+
+**Accuracy** (full details and tables in `docs/MODEL_CARD.md`):
+- Evaluated 4 models × 8 preprocessing settings × 2 ranking methods on lab and field photos (`scripts/eval_pipeline.py`).
+- New default model: **linkanjarad MobileNetV2**. The model can be switched in `.env` (`DHARRAKSHAK_MODEL`).
+- **Crop-aware ranking** (only the registered crop's classes), plus flip-averaging.
+- **Result on field photos: 12% → 60% top-1, 81% → 85% top-3, F1 0.43 → 0.60.**
+- `backend/ml/preprocess.py` (OpenCV): EXIF rotation and quality checks (blur, dark, blank, tiny) are on. Leaf segmentation (keeps lesions, falls back safely), background removal, CLAHE, white balance and denoising are implemented but **off**, because they didn't help real-world accuracy.
+- Uncertainty calibrated on field photos:
+  - a top-2 gap under 0.3 is flagged (43% accurate vs 55% for unflagged results);
+  - the "may not be your crop" warning was tuned to about 4.5% false alarms;
+  - crops the model knows only one class for are flagged as limited support.
+- New files: `backend/ml/models.py` (backends + strict label mapping), `backend/ml/classifier_labels.py`, `scripts/fetch_field_images.py`, `scripts/eval_pipeline.py`. Tests guard accuracy at ≥90% on lab and ≥55% on field photos.
+
+**UI redesign:**
+- New **Dashboard** home screen.
+- Compact cards and type scale, Lucide icons, a 6-language dropdown, and a bottom tab bar on phones.
+- Leaf check uses two columns (upload panel stays in view on desktop).
+- Dates are shown in local time, which fixes a UTC off-by-one-day bug.
+
+**Languages: English, Hindi, Marathi, Punjabi, Haryanvi, Bhojpuri:**
+- All farmer-facing text that was in Python moved to `shared/content/messages.json`.
+- `scripts/translate_content.py` (Groq) translates every UI label and content text, validates placeholders and script, and saves after every batch. It stays within Groq's 8,000 tokens/minute free tier.
+- Fallback chain: regional language → Hindi → English (`LANGUAGE_FALLBACK` in `shared/contract.py`, mirrored in `frontend/src/i18n/languages.js`).
+- The chatbot answers in all six languages.
+- `tests/test_i18n.py` checks every language has every label and content text, with matching placeholders, in the right script.
+- **These are machine translations. A native speaker should review them, especially Haryanvi and Bhojpuri.**
+
+**Voice:**
+- Push-to-talk in all six languages. Whisper handles en/hi/mr/pa directly; Haryanvi and Bhojpuri are transcribed as Hindi, the closest available.
+- Replies are read aloud with the device's voice for the language, and the app says so when none is installed.
+- **LiveKit real-time voice was not built:** it needs a LiveKit server or cloud plus a separate agent process, too fragile for a hackathon. Push-to-talk is the working fallback the brief allows.
+- **BHASHINI TTS** is the recommended next step for natural Marathi, Punjabi and Bhojpuri voices. It needs a free BHASHINI API key.

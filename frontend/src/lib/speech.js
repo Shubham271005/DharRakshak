@@ -63,8 +63,6 @@ export function useRecorder() {
   return { supported, recording, start, stop }
 }
 
-const SPEECH_LANG = { en: 'en-IN', hi: 'hi-IN' }
-
 export function useSpeaker() {
   const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined
   const [voices, setVoices] = useState(() => synth?.getVoices() ?? [])
@@ -78,28 +76,25 @@ export function useSpeaker() {
     return () => synth.removeEventListener?.('voiceschanged', update)
   }, [synth])
 
+  /** Best voice for a BCP-47 tag like 'mr-IN' (exact match, then same language). */
   const voiceFor = useCallback(
-    (lang) => {
-      const code = SPEECH_LANG[lang] ?? 'en-IN'
-      return (
-        voices.find((v) => v.lang === code) ??
-        voices.find((v) => v.lang?.toLowerCase().startsWith(lang)) ??
-        null
-      )
+    (tag) => {
+      const primary = tag.split('-')[0].toLowerCase()
+      return voices.find((v) => v.lang === tag) ?? voices.find((v) => v.lang?.toLowerCase().startsWith(primary)) ?? null
     },
     [voices],
   )
 
-  /** True if this device has a voice for the language (Hindi isn't everywhere). */
-  const canSpeak = useCallback((lang) => !!synth && (lang === 'en' || !!voiceFor(lang)), [synth, voiceFor])
+  /** True if this device can read text aloud in `tag` (English always works). */
+  const canSpeak = useCallback((tag) => !!synth && (tag.startsWith('en') || !!voiceFor(tag)), [synth, voiceFor])
 
   const speak = useCallback(
-    (text, lang) => {
-      if (!synth || !canSpeak(lang)) return
+    (text, tag) => {
+      if (!synth || !canSpeak(tag)) return
       synth.cancel() // never talk over yourself
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = SPEECH_LANG[lang] ?? 'en-IN'
-      const voice = voiceFor(lang)
+      utterance.lang = tag
+      const voice = voiceFor(tag)
       if (voice) utterance.voice = voice
       utterance.rate = 0.95
       synth.speak(utterance)

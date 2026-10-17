@@ -37,8 +37,17 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Languages that MUST be present in every LocalizedText.
-# Add a regional language here only once its translations are actually written.
 REQUIRED_LANGUAGES: tuple[str, ...] = ("en", "hi")
+
+# All languages the app offers. Codes: ISO 639 (bgc = Haryanvi, bho = Bhojpuri).
+# Text for mr/pa/bgc/bho is stored as extra keys on LocalizedText
+# (shared/content/*.json, shared/i18n/*.json — see scripts/translate_content.py).
+SUPPORTED_LANGUAGES: tuple[str, ...] = ("en", "hi", "mr", "pa", "bgc", "bho")
+LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English", "hi": "Hindi", "mr": "Marathi", "pa": "Punjabi", "bgc": "Haryanvi", "bho": "Bhojpuri",
+}
+# If a text is missing in a language, show the closest one the farmer can read.
+LANGUAGE_FALLBACK: dict[str, str] = {"mr": "hi", "pa": "hi", "bgc": "hi", "bho": "hi", "hi": "en"}
 
 
 # ---------------------------------------------------------------------------
@@ -58,13 +67,20 @@ class LocalizedText(BaseModel):
     hi: str
 
     def in_lang(self, lang: str) -> str:
-        """Return the text in `lang`, falling back to English if missing."""
-        if lang == "en":
-            return self.en
-        if lang == "hi":
-            return self.hi
-        extra = self.model_extra or {}
-        return extra.get(lang) or self.en
+        """Return the text in `lang`, following LANGUAGE_FALLBACK (e.g.
+        Bhojpuri → Hindi → English) when a translation is missing."""
+        seen = set()
+        while lang and lang not in seen:
+            seen.add(lang)
+            if lang == "en":
+                return self.en
+            if lang == "hi":
+                return self.hi
+            text = (self.model_extra or {}).get(lang)
+            if text:
+                return text
+            lang = LANGUAGE_FALLBACK.get(lang, "en")
+        return self.en
 
 
 class CropStage(str, Enum):

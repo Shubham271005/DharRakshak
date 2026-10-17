@@ -27,6 +27,7 @@ import time
 
 import httpx
 
+from backend.engines.content import message, per_language
 from shared.contract import LocalizedText, Weather, WeatherSource
 
 log = logging.getLogger("dharrakshak.weather")
@@ -74,22 +75,22 @@ def _values(daily: dict, key: str, start: int, end: int) -> list[float]:
 
 def build_summary(rain_past: float, humidity: float, temp: float,
                   rain_next: float | None, chance_next: float | None) -> LocalizedText:
-    en = f"Last 3 days: {rain_past:.1f} mm rain, {humidity:.0f}% humidity, {temp:.0f}°C."
-    hi = f"पिछले 3 दिन: {rain_past:.1f} मिमी बारिश, {humidity:.0f}% नमी, {temp:.0f}°C।"
+    """Farmer-friendly summary in every language (sentences: shared/content/messages.json)."""
+    numbers = {
+        "rain": f"{rain_past:.1f}", "humidity": f"{humidity:.0f}", "temp": f"{temp:.0f}",
+        "rain_next": f"{(rain_next or 0):.0f}", "chance": f"{(chance_next or 0):.0f}",
+    }
+    parts = [message("weather_past", per_language(lambda lang: numbers))]
     if rain_next is not None:
         if rain_next < 1 and (chance_next or 0) < 30:
-            en += " Next 3 days: little or no rain expected."
-            hi += " अगले 3 दिन: बारिश की संभावना कम है।"
+            parts.append(message("weather_next_dry"))
         elif rain_next < 1:
-            # Almost no rain forecast in mm, but a real chance of showers.
-            en += f" Next 3 days: light rain possible (up to {chance_next:.0f}% chance)."
-            hi += f" अगले 3 दिन: हल्की बारिश संभव (अधिकतम {chance_next:.0f}% संभावना)।"
+            parts.append(message("weather_next_light", per_language(lambda lang: numbers)))  # showers possible
         else:
-            chance_en = f" (up to {chance_next:.0f}% chance)" if chance_next is not None else ""
-            chance_hi = f" (अधिकतम {chance_next:.0f}% संभावना)" if chance_next is not None else ""
-            en += f" Next 3 days: about {rain_next:.0f} mm rain expected{chance_en}."
-            hi += f" अगले 3 दिन: लगभग {rain_next:.0f} मिमी बारिश संभावित{chance_hi}।"
-    return LocalizedText(en=en + " Source: Open-Meteo.", hi=hi + " स्रोत: Open-Meteo।")
+            parts.append(message("weather_next_rain", per_language(lambda lang: numbers)))
+    parts.append(message("weather_source"))
+    langs = set.intersection(*(set(p.model_dump()) for p in parts))
+    return LocalizedText(**{lang: " ".join(p.in_lang(lang) for p in parts) for lang in langs})
 
 
 def parse_weather(payload: dict) -> Weather:

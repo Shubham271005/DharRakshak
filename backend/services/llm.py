@@ -101,7 +101,7 @@ def transcribe(audio: bytes, filename: str, content_type: str, lang: str | None 
     """Speech-to-text with Whisper. `lang` ("hi"/"en") improves accuracy.
     Returns "" when the recording seems to contain no real speech."""
     data = {"model": config.GROQ_STT_MODEL, "response_format": "verbose_json", "temperature": "0"}
-    if lang in ("hi", "en"):
+    if lang in ("en", "hi", "mr", "pa"):  # Whisper language codes we support
         data["language"] = lang
     try:
         resp = httpx.post(
