@@ -11,7 +11,7 @@
  */
 import { IndianRupee, LayoutDashboard, Leaf, MessageCircle, Sprout } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { demoCropId } from './api/client.js'
+import { ApiError, demoCropId, getCropProfile } from './api/client.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { BottomNav, MobileHeader, Sidebar } from './components/Sidebar.jsx'
 import AnalysisScreen from './screens/AnalysisScreen.jsx'
@@ -36,9 +36,37 @@ const screenFromHash = () => {
   return SCREENS.some((s) => s.id === id) ? id : 'dashboard'
 }
 
+// The selected crop is remembered in this browser so a refresh keeps it.
+const CROP_KEY = 'dharrakshak.crop'
+const savedCropId = () => {
+  try {
+    return localStorage.getItem(CROP_KEY) || demoCropId()
+  } catch {
+    return demoCropId()
+  }
+}
+
 export default function App() {
   const [screenId, setScreenId] = useState(screenFromHash)
-  const [cropId, setCropId] = useState(demoCropId)
+  const [cropId, setCropId] = useState(savedCropId)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CROP_KEY, cropId)
+    } catch {
+      /* storage blocked — the choice just won't survive a refresh */
+    }
+  }, [cropId])
+
+  // If the remembered crop no longer exists (e.g. after scripts/reset_db.py),
+  // fall back to the demo crop instead of showing errors everywhere.
+  useEffect(() => {
+    if (cropId === demoCropId()) return
+    getCropProfile(cropId).catch((err) => {
+      if (err instanceof ApiError && err.status === 404) setCropId(demoCropId())
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Keep the URL and the screen in sync (also handles browser Back/Forward).
   useEffect(() => {

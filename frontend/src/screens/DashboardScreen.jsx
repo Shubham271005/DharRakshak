@@ -8,6 +8,7 @@
 import { ArrowRight, Camera, CloudRain, Droplets, FileCheck2, Leaf, MapPin, MessageCircle, Sprout, Thermometer } from 'lucide-react'
 import { getCropProfile, getLatestAnalysis, getLoanSummary, getWeather } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
+import { CropSwitcher } from '../components/CropPicker.jsx'
 import { Button, Card, ErrorBox, Loading, MockTag, Pill, ProgressBar, RiskBadge, Stat, WeatherTiles } from '../components/ui.jsx'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { formatDate, formatINR } from '../lib/format.js'
@@ -159,7 +160,7 @@ function AskCard({ onNavigate }) {
   )
 }
 
-export default function DashboardScreen({ cropId, onNavigate }) {
+export default function DashboardScreen({ cropId, onCropChange, onNavigate }) {
   const { t } = useLanguage()
   const { data: profile, loading, error, reload } = useApiData(() => getCropProfile(cropId), [cropId])
 
@@ -172,7 +173,10 @@ export default function DashboardScreen({ cropId, onNavigate }) {
           </h1>
           <p className="text-sm text-muted">{t('dashboard_subtitle')}</p>
         </div>
-        <Button icon={Camera} onClick={() => onNavigate('analysis')}>{t('check_leaf_cta')}</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <CropSwitcher cropId={cropId} onCropChange={onCropChange} />
+          <Button icon={Camera} onClick={() => onNavigate('analysis')}>{t('check_leaf_cta')}</Button>
+        </div>
       </header>
       {loading && !profile && <Loading />}
       {error && <ErrorBox error={error} onRetry={reload} />}

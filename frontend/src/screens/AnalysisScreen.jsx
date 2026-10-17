@@ -164,17 +164,20 @@ function Result({ result }) {
   )
 }
 
-function HistoryCard({ history, currentId }) {
+function HistoryCard({ history, currentId, onOpen }) {
   const { lang, t, tr } = useLanguage()
-  if (history.length < 2) return null
+  if (history.length === 0) return null
   return (
     <Card title={t('history_title')} icon={History} bodyClassName="p-0">
       <ul className="divide-y divide-tint text-sm">
         {history.slice(0, 8).map((a) => (
-          <li key={a.analysis_id} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 ${a.analysis_id === currentId ? 'bg-tint/40' : ''}`}>
-            <span className="w-24 shrink-0 text-xs text-muted">{formatDate(a.created_at, lang)}</span>
-            <span className="min-w-0 flex-1 truncate font-medium">{tr(a.predictions[0].display_name)}</span>
-            <RiskBadge level={a.risk.level} />
+          <li key={a.analysis_id}>
+            <button onClick={() => onOpen(a)}
+              className={`flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2 text-left hover:bg-cream ${a.analysis_id === currentId ? 'bg-tint/40' : ''}`}>
+              <span className="w-24 shrink-0 text-xs text-muted">{formatDate(a.created_at, lang)}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{tr(a.predictions[0].display_name)}</span>
+              <RiskBadge level={a.risk.level} />
+            </button>
           </li>
         ))}
       </ul>
@@ -187,7 +190,7 @@ export default function AnalysisScreen({ cropId }) {
   const { data: history, loading, error, reload } = useApiData(() => getHistory(cropId), [cropId])
   const [fresh, setFresh] = useState(null)
   useEffect(() => setFresh(null), [cropId])
-  const result = fresh ?? history?.[0] ?? null
+  const result = fresh  // nothing is shown until a photo is checked or an earlier check is opened
 
   return (
     <section>
@@ -197,8 +200,8 @@ export default function AnalysisScreen({ cropId }) {
         <div className="min-w-0 space-y-4">
           {loading && !history && <Loading />}
           {error && <ErrorBox error={error} onRetry={reload} />}
-          {result ? <Result result={result} /> : !loading && <Notice tone="tint">{t('no_analysis_yet')}</Notice>}
-          {history && <HistoryCard history={history} currentId={result?.analysis_id} />}
+          {result ? <Result result={result} /> : <Notice tone="tint">{t('upload_to_see_result')}</Notice>}
+          {history && <HistoryCard history={history} currentId={result?.analysis_id} onOpen={setFresh} />}
         </div>
       </div>
     </section>

@@ -144,5 +144,13 @@
   "stage_vegetative": "Vegetative growth",
   "stage_flowering": "Flowering",
   "stage_fruiting": "Fruiting",
-  "stage_maturity": "Maturity"
+  "stage_maturity": "Maturity",
+  "my_crops_title": "My crops",
+  "crops_count": "{count} crops",
+  "viewing": "Viewing",
+  "no_checks_yet": "No leaf checks yet",
+  "checks_count": "{count} leaf checks",
+  "last_check": "last",
+  "switch_crop": "Switch crop",
+  "upload_to_see_result": "Upload a leaf photo to see the result here. Earlier checks are listed below — tap one to open it."
 }

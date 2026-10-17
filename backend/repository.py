@@ -22,6 +22,7 @@ from backend.engines.content import load
 from backend.sample_store import sample
 from shared.contract import (
     AnalysisResult,
+    CropListItem,
     CropProfile,
     CropProfileCreate,
     DocumentItem,
@@ -60,6 +61,7 @@ def _row_to_crop(row) -> CropProfile:
         yield_estimate = YieldRange(min_kg=row["yield_min_kg"], max_kg=row["yield_max_kg"])
     return CropProfile(
         crop_id=row["crop_id"],
+        farmer_id=row["farmer_id"],
         farmer_name=row["farmer_name"],
         preferred_language=row["preferred_language"],
         crop_type=row["crop_type"],
@@ -81,14 +83,30 @@ def get_crop(crop_id: str) -> CropProfile | None:
     return _row_to_crop(row) if row else None
 
 
+class UnknownFarmer(LookupError):
+    """CropProfileCreate.farmer_id doesn't exist. The API returns 404."""
+
+
 def create_crop(new: CropProfileCreate, lat: float, lon: float) -> CropProfile:
-    """Create a farmer and their crop from the registration form."""
-    farmer_id, crop_id = _new_id("farmer"), _new_id("crop")
+    """Add a crop. With `new.farmer_id` it belongs to that existing farmer
+    (their name/language are updated from the form); without it a new
+    farmer is created."""
+    crop_id = _new_id("crop")
     with connect() as conn:
-        conn.execute(
-            "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
-            (farmer_id, new.farmer_name, new.preferred_language),
-        )
+        if new.farmer_id:
+            farmer_id = new.farmer_id
+            updated = conn.execute(
+                "UPDATE farmers SET name = ?, preferred_language = ? WHERE farmer_id = ?",
+                (new.farmer_name, new.preferred_language, farmer_id),
+            ).rowcount
+            if not updated:
+                raise UnknownFarmer(farmer_id)
+        else:
+            farmer_id = _new_id("farmer")
+            conn.execute(
+                "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
+                (farmer_id, new.farmer_name, new.preferred_language),
+            )
         conn.execute(
             """INSERT INTO crops (crop_id, farmer_id, crop_type, variety, sowing_date,
                                   area_acres, location_name, latitude, longitude, stage)
@@ -97,6 +115,39 @@ def create_crop(new: CropProfileCreate, lat: float, lon: float) -> CropProfile:
              new.area_acres, new.location_name, lat, lon, new.stage.value),
         )
     return get_crop(crop_id)  # type: ignore[return-value]
+
+
+def list_crops() -> list[CropListItem]:
+    """Every crop on this device, newest first, with a summary of its checks.
+
+    The app has no login yet (one device = one household), so "my crops" is
+    every crop in the database. With accounts, filter by farmer_id here.
+    """
+    with connect() as conn:
+        rows = conn.execute(f"{_CROP_SELECT} ORDER BY c.created_at DESC, c.rowid DESC").fetchall()
+        stats = {
+            r["crop_id"]: r
+            for r in conn.execute(
+                """SELECT a.crop_id, COUNT(*) AS checks, MAX(a.created_at) AS latest,
+                          (SELECT result_json FROM analyses b WHERE b.crop_id = a.crop_id
+                           ORDER BY b.created_at DESC LIMIT 1) AS latest_json
+                   FROM analyses a GROUP BY a.crop_id"""
+            ).fetchall()
+        }
+    items = []
+    for row in rows:
+        item = CropListItem(profile=_row_to_crop(row))
+        s = stats.get(row["crop_id"])
+        if s:
+            latest = AnalysisResult.model_validate_json(s["latest_json"])
+            item = item.model_copy(update={
+                "checks": s["checks"],
+                "latest_check_at": latest.created_at,
+                "latest_risk": latest.risk.level,
+                "latest_prediction": latest.predictions[0].display_name,
+            })
+        items.append(item)
+    return items
 
 
 def update_crop(crop_id: str, changes: CropProfileCreate, lat: float, lon: float) -> CropProfile | None:

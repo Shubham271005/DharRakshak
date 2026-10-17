@@ -144,5 +144,13 @@
   "stage_vegetative": "बढ़वार",
   "stage_flowering": "फूल आना",
   "stage_fruiting": "फल लगना",
-  "stage_maturity": "पकना"
+  "stage_maturity": "पकना",
+  "my_crops_title": "मेरी फसलें",
+  "crops_count": "{count} फसलें",
+  "viewing": "देख रहे हैं",
+  "no_checks_yet": "अभी तक कोई पत्ती जाँच नहीं",
+  "checks_count": "{count} पत्ती जाँच",
+  "last_check": "पिछली",
+  "switch_crop": "फसल बदलें",
+  "upload_to_see_result": "परिणाम देखने के लिए पत्ती की फोटो अपलोड करें। पिछली जाँचें नीचे हैं — खोलने के लिए किसी पर टैप करें।"
 }

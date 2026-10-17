@@ -199,6 +199,19 @@ def test_hindi_templates_never_put_a_disease_name_before_a_postposition():
     # "{disease}" expands to phrases like "अंगूर का काला सड़न"; directly before
     # से / को / के / में the "का" would need to change form ("के"), so templates
     # must phrase around it, e.g. "इस समस्या ({disease}) को".
+    # Checks the Hindi ("hi") texts only — other languages have their own grammar.
+    def hindi_texts(node):
+        if isinstance(node, dict):
+            if isinstance(node.get("hi"), str):
+                yield node["hi"]
+            for key, value in node.items():
+                if key != "hi":
+                    yield from hindi_texts(value)
+        elif isinstance(node, list):
+            for item in node:
+                yield from hindi_texts(item)
+
     for name in ("action_cards", "risk_rules"):
-        text = (CONTENT_DIR / f"{name}.json").read_text(encoding="utf-8")
-        assert not re.search(r"\{disease\}\s*(से|को|के|में|जैसे)", text), name
+        data = json.loads((CONTENT_DIR / f"{name}.json").read_text(encoding="utf-8"))
+        for text in hindi_texts(data):
+            assert not re.search(r"\{disease\}\s*(से|को|के|में|जैसे)", text), f"{name}: {text}"

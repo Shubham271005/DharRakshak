@@ -12,6 +12,7 @@ import { CalendarDays, CloudRain, Droplets, LocateFixed, MapPin, Ruler, Save, Sp
 import { useEffect, useState } from 'react'
 import { ApiError, getCropProfile, getCurrentPosition, getWeather, saveCropProfile } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
+import { CropList } from '../components/CropPicker.jsx'
 import { Button, Card, ErrorBox, Field, INPUT_CLASS, Loading, MockTag, Notice, Pill, ScreenHeader, Stat, WeatherTiles } from '../components/ui.jsx'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { formatDate, todayISO } from '../lib/format.js'
@@ -104,6 +105,8 @@ function CropForm({ profile, cropId, onSaved }) {
     setMessage(null)
     try {
       const body = { ...form, area_acres: Number(form.area_acres), preferred_language: lang }
+      // A new crop belongs to the same farmer (so it shows up in their crops and loan).
+      if (asNew && profile.farmer_id) body.farmer_id = profile.farmer_id
       if (body.latitude == null) {
         delete body.latitude
         delete body.longitude
@@ -167,9 +170,11 @@ function CropForm({ profile, cropId, onSaved }) {
 export default function ProfileScreen({ cropId, onCropChange }) {
   const { t } = useLanguage()
   const { data: profile, loading, error, reload } = useApiData(() => getCropProfile(cropId), [cropId])
+  const [listVersion, setListVersion] = useState(0) // bump to reload "My crops" after saving
   return (
     <section className="space-y-4">
       <ScreenHeader title={t('nav_profile')} subtitle={t('profile_subtitle')} />
+      <CropList cropId={cropId} onCropChange={onCropChange} refreshKey={listVersion} />
       {loading && !profile && <Loading />}
       {error && <ErrorBox error={error} onRetry={reload} />}
       {profile && (
@@ -179,7 +184,11 @@ export default function ProfileScreen({ cropId, onCropChange }) {
             <div className="lg:col-span-2"><WeatherCard cropId={cropId} /></div>
           </div>
           <CropForm profile={profile} cropId={cropId}
-            onSaved={(saved) => (saved.crop_id !== cropId ? onCropChange(saved.crop_id) : reload())} />
+            onSaved={(saved) => {
+              setListVersion((v) => v + 1)
+              if (saved.crop_id !== cropId) onCropChange(saved.crop_id)
+              else reload()
+            }} />
         </>
       )}
     </section>

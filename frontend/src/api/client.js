@@ -89,6 +89,24 @@ export async function getHealth() {
 // Mock mode keeps the last saved profile here (lost on page reload).
 let mockSavedProfile = null
 
+/**
+ * Every crop on this device (newest first) for the "My crops" list:
+ * [{profile: CropProfile, checks, latest_check_at, latest_risk, latest_prediction}].
+ */
+export async function listCrops() {
+  if (isMockMode()) {
+    const latest = sample.analysis
+    return mockReturn([{
+      profile: mockSavedProfile ?? sample.crop_profile,
+      checks: 1,
+      latest_check_at: latest.created_at,
+      latest_risk: latest.risk.level,
+      latest_prediction: latest.predictions[0].display_name,
+    }])
+  }
+  return request('/crops')
+}
+
 export async function getCropProfile(cropId) {
   if (isMockMode()) return mockReturn(mockSavedProfile ?? sample.crop_profile)
   return request(`/crops/${encodeURIComponent(cropId)}`)

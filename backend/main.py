@@ -50,6 +50,7 @@ from shared.contract import (
     AnalysisResult,
     ChatReply,
     ChatRequest,
+    CropListItem,
     CropProfile,
     CropProfileCreate,
     DocumentUpdate,
@@ -154,7 +155,17 @@ def create_crop(new_crop: CropProfileCreate) -> CropProfile:
     """Register a new farmer + crop from the registration form. The location
     is geocoded unless the app sends GPS coordinates."""
     lat, lon = _resolve_coordinates(new_crop)
-    return repository.create_crop(new_crop, lat, lon)
+    try:
+        return repository.create_crop(new_crop, lat, lon)
+    except repository.UnknownFarmer as err:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Farmer '{err}' not found") from err
+
+
+@router.get("/crops", response_model=list[CropListItem], tags=["crops"])
+def list_crops() -> list[CropListItem]:
+    """All crops on this device (newest first) with a summary of their leaf
+    checks — powers the "My crops" list and the crop switcher."""
+    return repository.list_crops()
 
 
 @router.get("/crops/{crop_id}", response_model=CropProfile, tags=["crops"])

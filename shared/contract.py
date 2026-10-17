@@ -134,6 +134,7 @@ class YieldRange(BaseModel):
 
 class CropProfile(BaseModel):
     crop_id: str
+    farmer_id: Optional[str] = Field(None, description="Owner; a farmer can have several crops")
     farmer_name: str
     preferred_language: str = Field("en", description="Language code, e.g. 'en' or 'hi'")
     crop_type: str = Field(..., description="Lower-case crop key, e.g. 'tomato'")
@@ -157,6 +158,9 @@ class CropProfileCreate(BaseModel):
     """
 
     farmer_name: str = Field(..., min_length=1, max_length=100)
+    farmer_id: Optional[str] = Field(
+        None, description="Add the crop to this existing farmer (from CropProfile.farmer_id); omit to create a new farmer"
+    )
     preferred_language: str = "en"
     crop_type: str = Field(..., description="Key from the supported-crops list, e.g. 'tomato'")
     variety: Optional[str] = None
@@ -176,6 +180,17 @@ class CropProfileCreate(BaseModel):
         if (self.latitude is None) != (self.longitude is None):
             raise ValueError("send both latitude and longitude, or neither")
         return self
+
+
+class CropListItem(BaseModel):
+    """One row of the "My crops" list: the crop plus a short summary of its
+    leaf checks, so the list can show progress without loading every analysis."""
+
+    profile: CropProfile
+    checks: int = Field(0, ge=0, description="Number of leaf checks saved for this crop")
+    latest_check_at: Optional[datetime] = None
+    latest_risk: Optional["RiskLevel"] = None
+    latest_prediction: Optional[LocalizedText] = None
 
 
 # ---------------------------------------------------------------------------

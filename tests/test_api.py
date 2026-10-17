@@ -376,3 +376,36 @@ def test_unknown_document_is_404(client):
 def test_document_update_for_farmer_without_loan_is_404(client):
     crop_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
     assert client.put(f"/api/crops/{crop_id}/loan/documents/land_record", json={"submitted": True}).status_code == 404
+
+
+# ----- my crops (list + same farmer) --------------------------------------------
+
+def test_list_crops_shows_every_crop_with_check_summary(client):
+    new_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
+    upload(client)  # one more check on the demo crop
+    items = client.get("/api/crops").json()
+    by_id = {i["profile"]["crop_id"]: i for i in items}
+    assert set(by_id) == {DEMO_CROP, new_id}
+    assert items[0]["profile"]["crop_id"] == new_id  # newest first
+    demo = by_id[DEMO_CROP]
+    assert demo["checks"] == 2 and demo["latest_risk"] in ("low", "moderate", "elevated")
+    assert demo["latest_prediction"]["en"].startswith(("Possible", "Likely"))
+    assert by_id[new_id]["checks"] == 0 and by_id[new_id]["latest_risk"] is None
+
+
+def test_new_crop_for_same_farmer_keeps_the_farmer(client):
+    demo = client.get(f"/api/crops/{DEMO_CROP}").json()
+    assert demo["farmer_id"] == "farmer-demo-001"
+    body = client.post("/api/crops", json=new_crop_payload(farmer_id=demo["farmer_id"], farmer_name="Demo Farmer")).json()
+    assert body["farmer_id"] == demo["farmer_id"]
+    # Same farmer → same (mock) loan records.
+    assert client.get(f"/api/crops/{body['crop_id']}/loan").status_code == 200
+
+
+def test_new_crop_without_farmer_creates_one(client):
+    body = client.post("/api/crops", json=new_crop_payload()).json()
+    assert body["farmer_id"] and body["farmer_id"] != "farmer-demo-001"
+
+
+def test_unknown_farmer_is_404(client):
+    assert client.post("/api/crops", json=new_crop_payload(farmer_id="farmer-nope")).status_code == 404

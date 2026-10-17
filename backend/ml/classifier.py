@@ -77,7 +77,7 @@ MODELS: dict[str, dict] = {
         "field_top1": 0.45,
     },
 }
-DEFAULT_MODEL = "linkanjarad-mobilenetv2"
+DEFAULT_MODEL = "daksh-mobilenetv2"  # the team's chosen model (Daksh159/plant-disease-mobilenetv2)
 
 TOP_K = 3
 USE_FLIP_TTA = True
@@ -211,31 +211,28 @@ class PlantDiseaseClassifier:
         prepared = preprocess(self._decode(image_bytes), DEFAULT_STEPS)
         probs = self._probs(prepared.image)
 
+        # The model's own top predictions across ALL 38 classes. The registered
+        # crop is only used to warn when the photo looks like a different crop.
         crop_classes = self._crop_of == registered_crop
-        mass = None
-        if registered_crop and crop_classes.any():
-            mass = float(probs[crop_classes].sum())
-            ranked_probs = np.where(crop_classes, probs, 0.0) / max(mass, 1e-9)  # renormalise within the crop
-        else:
-            ranked_probs = probs
-        order = [int(i) for i in np.argsort(-ranked_probs) if ranked_probs[i] > 0][:TOP_K]
+        mass = float(probs[crop_classes].sum()) if registered_crop and crop_classes.any() else None
+        ranked_probs = probs
+        order = [int(i) for i in np.argsort(-ranked_probs)][:TOP_K]
+        # Rank within the registered crop, but SHOW the model's real probability.
+        # (Re-scaling within the crop inflated confidence — a crop with a single
+        # class, e.g. orange, always showed 100%.)
         predictions = [
             Prediction(label=self.labels[i].label, display_name=display_name(self.labels[i]),
-                       confidence=round(float(ranked_probs[i]), 4))
+                       confidence=round(float(probs[i]), 4))
             for i in order
         ]
         top_p = ranked_probs[order[0]]
         second = ranked_probs[order[1]] if len(order) > 1 else 0.0
 
-        crop_mismatch = mass is not None and mass < CROP_MASS_THRESHOLD
-        single_class_crop = registered_crop is not None and int(crop_classes.sum()) == 1
+        # Warn (without changing the prediction) if the model's answer is for another crop.
+        crop_mismatch = registered_crop is not None and self.labels[order[0]].crop != registered_crop
         if prepared.poor_quality:
             msg = POOR_PHOTO_MESSAGE
-        elif crop_mismatch:
-            msg = message("not_registered_crop", crop_name(registered_crop))
-        elif single_class_crop:
-            msg = message("limited_crop_support", crop_name(registered_crop))
-        elif (top_p - second) < MARGIN_THRESHOLD or (mass is None and top_p < UNCERTAIN_THRESHOLD):
+        elif top_p < UNCERTAIN_THRESHOLD:
             msg = UNCERTAIN_MESSAGE
         else:
             msg = None
