@@ -45,7 +45,8 @@ Dynaminds-IIITD/
 │       └── screens/            ← one file per teammate                (C1 stubs → teammates)
 ├── tests/test_api.py           ← backend API tests                    (C2)
 ├── scripts/                    ← checks and helper scripts
-└── data/samples/               ← sample leaf photos for the demo     (C4)
+├── models/                     ← downloaded model weights (git-ignored)  (C4)
+└── data/eval/                  ← labelled test photos (git-ignored)      (C4)
 ```
 
 ---
@@ -155,22 +156,45 @@ python scripts/reset_db.py               # back to a clean demo state
 
 ---
 
-## 🔜 Component 4 — Pretrained image model (F1)
+## ✅ Component 4 — Pretrained image model (F1)
 
 **Goal:** a real photo goes in, and the real top-3 ranked possibilities come out.
 
-**Steps:**
-1. **Ask the team which model to use.** Then check its classes, license and input size, and record the choice in `docs/MODEL_CARD.md`.
-2. `backend/ml/classifier.py`: load the model once at startup, then preprocess (resize, normalize with the training values), run the model, apply softmax, take the top 3, map labels to EN/HI names, and apply the uncertainty threshold and crop-mismatch check.
-3. `shared/content/labels.json`: raw class names mapped to friendly EN/HI names.
-4. Add sample leaf photos to `data/samples/`.
-5. `requirements.txt`: add `torch`, `torchvision` or `transformers`, and `pillow`.
+**Model chosen by the team:** [`Daksh159/plant-disease-mobilenetv2`](https://huggingface.co/Daksh159/plant-disease-mobilenetv2). MobileNetV2, PlantVillage, 38 classes across 14 crops, Apache-2.0. Pinned to an exact revision. Full details and limitations are in `docs/MODEL_CARD.md`.
 
-**Verify:** `python scripts/try_model.py data/samples/<photo>` prints sensible top 3. A blurry or non-leaf photo shows *uncertain*.
+**Checks done before wiring it in:**
+- License: Apache-2.0, fine for our use.
+- The weights file holds weight data only, with no executable code. Its SHA-256 matches Hugging Face's record.
+- The repo is missing the `class_names.json` its card mentions. We took the class order from a community Space, then confirmed it against a labelled PlantVillage dataset that uses the same order.
+- That community Space loads the model with the wrong final layer and `strict=False`, which silently skips the trained weights. We match the training architecture (`Dropout → Linear`) and load with `strict=True`.
+
+**Files created / changed:**
+- `backend/ml/classifier.py`: download with resume and SHA-256 check, safe loading (`weights_only=True`), preprocessing (224×224 + ImageNet normalisation), top-3, "Possible …" / "Likely healthy …" wording in EN/HI, the uncertainty threshold (0.50) and the retake message. The model loads once and is thread-safe.
+- `backend/pipeline.py`: photo → AnalysisResult. Predictions, uncertainty and crop mismatch are **real**. Weather, risk, cards and explanation are still placeholders, so `is_demo` stays `true` until Components 5–6.
+- `backend/main.py`:
+  - Loads the model at startup (the API still starts if the weights are missing).
+  - Inference runs in a worker thread.
+  - Unreadable images return 400. A missing model returns 503.
+  - `/api/health` reports whether the model is loaded.
+- `shared/content/labels.json`: the 38 classes in model order, with crop key, healthy flag, and EN/HI names.
+- `frontend/src/lib/labels.js`: the crop list is now exactly the 14 crops the model knows.
+- `scripts/download_model.py`, `scripts/try_model.py`, `scripts/fetch_eval_images.py`, `scripts/eval_model.py`.
+- `tests/test_classifier.py` (real model, auto-skipped if not installed). The API tests use a fake classifier for uncertain, crop-mismatch, healthy, bad-image and missing-model cases.
+- `requirements.txt`: `torch`, `torchvision`, `pillow`. On Linux, install the CPU build first (see the comment in the file).
+
+**Verify:**
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu   # Linux
+pip install -r requirements.txt
+python scripts/download_model.py          # about 9 MB, verified
+python scripts/fetch_eval_images.py       # 76 labelled test images
+python scripts/eval_model.py              # accuracy + mistakes + speed
+pytest                                    # 31 passed
+```
 
 ---
 
-## ⬜ Component 5 — Weather context
+## 🔜 Component 5 — Weather context
 
 **Goal:** real recent and forecast weather for the crop's location, with a clearly labelled fallback.
 

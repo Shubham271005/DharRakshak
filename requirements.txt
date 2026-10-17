@@ -10,6 +10,14 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9   # needed for photo uploads
 
+# Component 4 — pretrained image model (MobileNetV2, PyTorch)
+# On Linux, install the smaller CPU-only build FIRST, then the rest:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# (Windows/macOS: the normal install below is already CPU-friendly.)
+torch>=2.4
+torchvision>=0.19
+pillow>=10
+
 # Testing
 pytest>=8
 httpx>=0.27               # used by FastAPI's TestClient

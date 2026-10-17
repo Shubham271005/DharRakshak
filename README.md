@@ -8,7 +8,7 @@ DharRakshak is an AI crop assistant. It turns a leaf photo, the farmer's crop pr
 ## Tech stack
 
 - **Backend:** Python 3.11+, FastAPI, SQLite
-- **AI:** pretrained plant-disease image classifier (PlantVillage-trained), rules-based risk and action engines, an LLM API for the chatbot
+- **AI:** pretrained MobileNetV2 plant-disease classifier ([model card](docs/MODEL_CARD.md)), rules-based risk and action engines, an LLM API for the chatbot
 - **Frontend:** React 19 + Vite + Tailwind CSS v4
 - **Data:** Open-Meteo weather (with mock fallback). Loan data is **mock only**, with no bank integration.
 
@@ -17,7 +17,10 @@ DharRakshak is an AI crop assistant. It turns a leaf photo, the farmer's crop pr
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
+# Linux only: get the small CPU build of PyTorch first (avoids a ~2 GB GPU download)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
+python scripts/download_model.py    # image model weights, ~9 MB (once per laptop)
 python scripts/check_sample_data.py
 
 # Backend (terminal 1) — API docs at http://localhost:8000/docs

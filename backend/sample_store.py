@@ -4,10 +4,9 @@ Sample data + temporary placeholders.
 Since Component 3, real storage lives in SQLite (backend/db.py and
 backend/repository.py). What's left here is:
 
-- `sample()`: loads shared/sample_data.json. Used to seed the demo farmer
-  and, until Component 7, to supply scheme notes.
-- `mock_analysis(crop_id)`: placeholder analysis result. Replaced by the
-  real image model + engines in Components 4–6.
+- `sample()`: loads shared/sample_data.json. Used to seed the demo farmer,
+  to supply the placeholder weather/risk/cards in backend/pipeline.py until
+  Components 5–6, and scheme notes until Component 7.
 - `mock_chat_reply(request)`: placeholder chatbot. Replaced by the
   grounded LLM + voice assistant in Component 9.
 
@@ -17,12 +16,10 @@ When those components land, the matching function here is deleted.
 from __future__ import annotations
 
 import json
-import uuid
-from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
-from shared.contract import AnalysisResult, ChatReply, ChatRequest, SampleData
+from shared.contract import ChatReply, ChatRequest, SampleData
 
 SAMPLE_PATH = Path(__file__).resolve().parent.parent / "shared" / "sample_data.json"
 
@@ -32,22 +29,6 @@ def sample() -> SampleData:
     """Load and validate the sample file once (fails loudly if it's broken)."""
     raw = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
     return SampleData.model_validate(raw)
-
-
-def mock_analysis(crop_id: str) -> AnalysisResult:
-    """Sample analysis re-labelled for this crop (the photo is not used yet).
-
-    `is_demo` stays True so the UI shows "DEMO EXAMPLE" until the real
-    model arrives in Component 4.
-    """
-    return sample().analysis.model_copy(
-        update={
-            "analysis_id": f"an-{uuid.uuid4().hex[:8]}",
-            "crop_id": crop_id,
-            "created_at": datetime.now(timezone.utc),
-            "is_demo": True,
-        }
-    )
 
 
 # Keyword routing to the sample chat answers, so the frontend chat works now.

@@ -1,5 +1,5 @@
 """
-DharRakshak — FastAPI backend (Components 2–3).
+DharRakshak — FastAPI backend (Components 2–4).
 
 Run from the repository root:
     uvicorn backend.main:app --reload --port 8000
@@ -16,20 +16,29 @@ What's real vs. placeholder so far:
 - Real: routing, input validation, upload checks, error codes, contract
   enforcement, CORS, and SQLite storage (crops, analyses, loans survive
   restarts). On first start the demo farmer is seeded automatically.
-- Placeholder: analysis ignores the photo and returns the sample result
-  (Components 4–6); chat uses keyword matching (Component 9).
+- Real (C4): the uploaded photo is classified by the pretrained
+  MobileNetV2 model (top-3 predictions, uncertainty, crop mismatch).
+- Placeholder: weather, risk, action cards and explanation in each analysis
+  (Components 5–6); chat uses keyword matching (Component 9).
 """
 
 from __future__ import annotations
 
+import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import repository
 from backend.db import init_db
-from backend.sample_store import mock_analysis, mock_chat_reply
+from backend.ml import classifier as clf
+from backend.pipeline import run_analysis
+from backend.sample_store import mock_chat_reply
+
+log = logging.getLogger("dharrakshak")
 from shared.contract import (
     AnalysisResult,
     ChatReply,
@@ -41,15 +50,24 @@ from shared.contract import (
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Runs once when the server starts: create tables, seed the demo farmer."""
+    """Runs once when the server starts: create tables, seed the demo farmer,
+    and load the image model so the first analysis is fast.
+    Set DHARRAKSHAK_PRELOAD_MODEL=0 to skip loading (the tests do this)."""
     init_db()
     repository.seed_demo_if_empty()
+    if os.getenv("DHARRAKSHAK_PRELOAD_MODEL", "1") != "0":
+        try:
+            await run_in_threadpool(clf.get_classifier)
+            log.info("Image model loaded.")
+        except clf.ModelNotAvailable as err:
+            # The API still starts; /analyze returns 503 until the model exists.
+            log.warning("Image model not available: %s", err)
     yield
 
 
 app = FastAPI(
     title="DharRakshak API",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
     description="Crop intelligence backend for the DharRakshak hackathon MVP. "
     "Loan data is MOCK — there is no bank integration.",
@@ -86,8 +104,13 @@ def _require_crop(crop_id: str) -> CropProfile:
 @router.get("/health", tags=["system"])
 def health() -> dict:
     """Quick check that the server is running. `stage` tells you which
-    roadmap component the backend is at."""
-    return {"status": "ok", "stage": "component-3-database"}
+    roadmap component the backend is at; `model` whether the image model is
+    loaded ("loaded") or will load on the first analysis ("not_loaded")."""
+    return {
+        "status": "ok",
+        "stage": "component-4-image-model",
+        "model": "loaded" if clf.is_loaded() else "not_loaded",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -121,8 +144,9 @@ def update_crop(crop_id: str, changes: CropProfileCreate) -> CropProfile:
 @router.post("/crops/{crop_id}/analyze", response_model=AnalysisResult, tags=["analysis"])
 async def analyze(crop_id: str, image: UploadFile = File(..., description="Leaf photo (JPEG/PNG/WebP)")) -> AnalysisResult:
     """Upload a leaf photo and get predictions, risk, action cards and an
-    explanation. SKELETON: the photo is validated but not analyzed yet."""
-    _require_crop(crop_id)
+    explanation. Predictions come from the real image model; weather, risk,
+    cards and explanation are still placeholders (Components 5–6)."""
+    crop = _require_crop(crop_id)
 
     if image.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
@@ -135,9 +159,17 @@ async def analyze(crop_id: str, image: UploadFile = File(..., description="Leaf 
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Photo is larger than 8 MB.")
 
-    # Components 4–6 replace mock_analysis with:
-    # model → weather → risk → actions → explanation.
-    return repository.save_analysis(mock_analysis(crop_id))
+    try:
+        classifier = await run_in_threadpool(clf.get_classifier)
+    except clf.ModelNotAvailable as err:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(err)) from err
+    try:
+        # Inference is CPU-bound, so it runs in a worker thread and doesn't
+        # block other requests.
+        result = await run_in_threadpool(run_analysis, crop, data, classifier)
+    except clf.InvalidImage as err:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
+    return repository.save_analysis(result)
 
 
 @router.get("/crops/{crop_id}/history", response_model=list[AnalysisResult], tags=["analysis"])
