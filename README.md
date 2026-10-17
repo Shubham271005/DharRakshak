@@ -38,4 +38,4 @@ Read [docs/CONTRACT.md](docs/CONTRACT.md) first. It explains the data your scree
 - Loan data is mock. There is no live bank integration.
 - No pesticide names or doses anywhere in the app.
 
-this is the second component draft for our prototype at hackShift IIITD
+this is the fifth component draft for our prototype at hackShift IIITD
