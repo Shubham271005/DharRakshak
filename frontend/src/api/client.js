@@ -98,10 +98,13 @@ export async function getCropProfile(cropId) {
  * Save the registration form. `form` has the CropProfileCreate fields:
  * farmer_name, preferred_language, crop_type, variety, sowing_date
  * ("YYYY-MM-DD"), area_acres (number), location_name, stage.
- * Returns the full CropProfile. In api mode the returned `crop_id` is NEW —
- * pass it to `onCropChange` so the rest of the app uses it.
+ *
+ * - With `cropId`: EDITS that crop (PUT) — same crop_id, history kept.
+ * - Without `cropId`: REGISTERS a new farmer + crop (POST) — returns a new
+ *   crop_id; pass it to `onCropChange` so the rest of the app uses it.
+ * Returns the full CropProfile.
  */
-export async function saveCropProfile(form) {
+export async function saveCropProfile(form, cropId = null) {
   if (isMockMode()) {
     const sown = new Date(`${form.sowing_date}T00:00:00`)
     const days = Math.max(0, Math.floor((Date.now() - sown.getTime()) / 86_400_000))
@@ -121,6 +124,13 @@ export async function saveCropProfile(form) {
       yield_estimate: null,
     }
     return mockReturn(mockSavedProfile)
+  }
+  if (cropId) {
+    return request(`/crops/${encodeURIComponent(cropId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
   }
   return postJSON('/crops', form)
 }
@@ -152,6 +162,7 @@ export async function getLatestAnalysis(cropId) {
 // F5 — finance & loans, MOCK DATA (Teammate 3)
 // ---------------------------------------------------------------------------
 
+/** Throws ApiError with status 404 when the farmer has no loan records yet. */
 export async function getLoanSummary(cropId) {
   if (isMockMode()) return mockReturn(sample.loan_summary)
   return request(`/crops/${encodeURIComponent(cropId)}/loan`)

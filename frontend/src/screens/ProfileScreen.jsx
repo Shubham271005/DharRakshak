@@ -1,8 +1,9 @@
 /*
  * SCREEN: My crop — registration form + profile card (F2)
  * OWNER:  Teammate 1
- * DATA:   getCropProfile(cropId)   -> CropProfile        (read)
- *         saveCropProfile(form)    -> CropProfile        (write)
+ * DATA:   getCropProfile(cropId)          -> CropProfile   (read)
+ *         saveCropProfile(form, cropId)   -> CropProfile   (edit this crop)
+ *         saveCropProfile(form)           -> CropProfile   (register a new crop)
  *         Fields: docs/CONTRACT.md, row "Crop registration + profile card"
  *
  * ========================================================================
@@ -36,11 +37,14 @@
  *           crop stage .......... <select> over Object.keys(STAGE_LABELS)
  *         Input style idea: "w-full rounded-xl border border-tint bg-cream px-3 py-2"
  *
- * TODO 3  Save. In onSubmit: e.preventDefault(), call
- *         `const saved = await saveCropProfile({...form, preferred_language: lang})`
- *         inside try/catch. On success: onCropChange(saved.crop_id), reload(),
- *         and show a green "Saved" message. On ApiError: show error.message
- *         in red. Disable the button while saving.
+ * TODO 3  Save. Two buttons:
+ *           "Save changes"     → saveCropProfile({...form, preferred_language: lang}, cropId)
+ *           "Register new crop" → saveCropProfile({...form, preferred_language: lang})
+ *         In onSubmit: e.preventDefault(), await the call inside try/catch.
+ *         On success: onCropChange(saved.crop_id), reload(), and show a
+ *         green "Saved" message. On ApiError: show error.message in red.
+ *         Disable the buttons while saving. Data is stored in the database,
+ *         so it survives a server restart (api mode).
  *
  * TODO 4  Language. Every label via t('your_key') — add the keys (en + hi)
  *         to src/i18n/uiText.js. Switch to हिंदी in the sidebar and check.

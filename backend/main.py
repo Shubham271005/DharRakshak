@@ -1,5 +1,5 @@
 """
-DharRakshak — FastAPI backend (Component 2: skeleton).
+DharRakshak — FastAPI backend (Components 2–3).
 
 Run from the repository root:
     uvicorn backend.main:app --reload --port 8000
@@ -12,19 +12,24 @@ this server (see frontend/vite.config.js) without CORS problems.
 Every response uses a model from shared/contract.py (`response_model=`),
 so FastAPI refuses to send anything that doesn't match the contract.
 
-What's real vs. placeholder in this component:
+What's real vs. placeholder so far:
 - Real: routing, input validation, upload checks, error codes, contract
-  enforcement, CORS.
-- Placeholder: storage is in memory (sample_store.py); analysis ignores the
-  photo and returns the sample result; chat uses keyword matching.
+  enforcement, CORS, and SQLite storage (crops, analyses, loans survive
+  restarts). On first start the demo farmer is seeded automatically.
+- Placeholder: analysis ignores the photo and returns the sample result
+  (Components 4–6); chat uses keyword matching (Component 9).
 """
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.sample_store import mock_chat_reply, store
+from backend import repository
+from backend.db import init_db
+from backend.sample_store import mock_analysis, mock_chat_reply
 from shared.contract import (
     AnalysisResult,
     ChatReply,
@@ -34,9 +39,18 @@ from shared.contract import (
     LoanSummary,
 )
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Runs once when the server starts: create tables, seed the demo farmer."""
+    init_db()
+    repository.seed_demo_if_empty()
+    yield
+
+
 app = FastAPI(
     title="DharRakshak API",
-    version="0.2.0",
+    version="0.3.0",
+    lifespan=lifespan,
     description="Crop intelligence backend for the DharRakshak hackathon MVP. "
     "Loan data is MOCK — there is no bank integration.",
 )
@@ -59,7 +73,7 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB is plenty for a phone photo
 
 def _require_crop(crop_id: str) -> CropProfile:
     """Return the crop or stop the request with a 404."""
-    crop = store.get_crop(crop_id)
+    crop = repository.get_crop(crop_id)
     if crop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Crop '{crop_id}' not found")
     return crop
@@ -73,7 +87,7 @@ def _require_crop(crop_id: str) -> CropProfile:
 def health() -> dict:
     """Quick check that the server is running. `stage` tells you which
     roadmap component the backend is at."""
-    return {"status": "ok", "stage": "component-2-skeleton"}
+    return {"status": "ok", "stage": "component-3-database"}
 
 
 # ---------------------------------------------------------------------------
@@ -82,13 +96,22 @@ def health() -> dict:
 
 @router.post("/crops", response_model=CropProfile, status_code=status.HTTP_201_CREATED, tags=["crops"])
 def create_crop(new_crop: CropProfileCreate) -> CropProfile:
-    """Register a crop from the farmer's form input."""
-    return store.create_crop(new_crop)
+    """Register a new farmer + crop from the registration form."""
+    return repository.create_crop(new_crop)
 
 
 @router.get("/crops/{crop_id}", response_model=CropProfile, tags=["crops"])
 def get_crop(crop_id: str) -> CropProfile:
     return _require_crop(crop_id)
+
+
+@router.put("/crops/{crop_id}", response_model=CropProfile, tags=["crops"])
+def update_crop(crop_id: str, changes: CropProfileCreate) -> CropProfile:
+    """Edit an existing crop profile (keeps the same crop_id and history)."""
+    updated = repository.update_crop(crop_id, changes)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Crop '{crop_id}' not found")
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -112,15 +135,16 @@ async def analyze(crop_id: str, image: UploadFile = File(..., description="Leaf 
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Photo is larger than 8 MB.")
 
-    # Component 4 replaces this line with: model → weather → risk → actions → explanation.
-    return store.mock_analysis(crop_id)
+    # Components 4–6 replace mock_analysis with:
+    # model → weather → risk → actions → explanation.
+    return repository.save_analysis(mock_analysis(crop_id))
 
 
 @router.get("/crops/{crop_id}/history", response_model=list[AnalysisResult], tags=["analysis"])
 def history(crop_id: str) -> list[AnalysisResult]:
     """All analyses for this crop, newest first (powers 'track progress')."""
     _require_crop(crop_id)
-    return store.history(crop_id)
+    return repository.list_analyses(crop_id)
 
 
 # ---------------------------------------------------------------------------
@@ -129,9 +153,13 @@ def history(crop_id: str) -> list[AnalysisResult]:
 
 @router.get("/crops/{crop_id}/loan", response_model=LoanSummary, tags=["finance"])
 def loan(crop_id: str) -> LoanSummary:
-    """Loan status, dues, missing documents and schemes. Always mock data."""
+    """Loan status, dues, missing documents and schemes. Always mock data.
+    404 when the farmer has no loan records (e.g. a newly registered farmer)."""
     _require_crop(crop_id)
-    return store.get_loan(crop_id)
+    summary = repository.get_loan_summary(crop_id)
+    if summary is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No loan records for this farmer yet.")
+    return summary
 
 
 # ---------------------------------------------------------------------------

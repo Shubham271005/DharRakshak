@@ -4,7 +4,12 @@ This is the guided, step-by-step plan for building the prototype. We build **one
 
 **Legend:** ✅ done · 🔜 next · ⬜ not started
 
-**Features:** F1 symptom analysis · F2 crop profile + action cards · F3 context risk · F4 explainability · F5 finance & loans · F6 regional languages · F7 multilingual chatbot
+**Features:** F1 symptom analysis · F2 crop profile + action cards · F3 context risk · F4 explainability · F5 finance & loans · F6 regional languages · F7 multilingual chatbot + voice assistant
+
+**Team decisions that shape the plan:**
+- **Real APIs over mock data.** The team has API keys, so every component that has a real service uses it. Mock data stays only where no real source can be used: loans (no bank integration), plus clearly labelled fallbacks when a service is down.
+- **Ask before choosing.** Before adding the pretrained image model (Component 4) or any keyed API (LLM, voice), Claude asks which model or provider to use and for the key. Keys go in `.env`, which is never committed.
+- **Voice assistant** is part of the multilingual chatbot (Component 9).
 
 ## Target folder structure
 
@@ -19,12 +24,14 @@ Dynaminds-IIITD/
 │   └── content/                ← rules, card templates, schemes, docs (C6, C7)
 ├── backend/
 │   ├── main.py                 ← FastAPI app + routes                (C2)
-│   ├── db.py                   ← SQLite tables + helpers             (C3)
+│   ├── db.py                   ← SQLite connection + schema          (C3)
+│   ├── repository.py           ← all database reads/writes           (C3)
 │   ├── ml/classifier.py        ← pretrained image model              (C4)
 │   ├── services/weather.py     ← Open-Meteo + mock fallback          (C5)
 │   ├── engines/                ← risk.py, actions.py, explain.py     (C6)
 │   ├── services/loans.py       ← mock loans + document checker       (C7)
-│   └── services/chat.py        ← grounded LLM chatbot                (C9)
+│   ├── services/chat.py        ← grounded LLM chatbot                (C9)
+│   └── services/voice.py       ← speech-to-text + text-to-speech     (C9)
 ├── frontend/                   ← React + Vite + Tailwind CSS v4
 │   ├── package.json, vite.config.js, index.html, .env.example
 │   └── src/
@@ -123,22 +130,37 @@ The sidebar shows **Connected to server** and every screen loads its data from t
 
 ---
 
-## 🔜 Component 3 — Database (SQLite) + real crop profiles
+## ✅ Component 3 — Database (SQLite) + real crop profiles
 
-**Goal:** crop profiles and analyses are saved and loaded for real.
+**Goal:** crop profiles, analyses and loan records are saved for real and survive a server restart.
 
-**Files:** `backend/db.py` (tables: farmers, crops, analyses, loans, documents; uses Python's built-in `sqlite3`). `backend/main.py`: the `/crops` routes read and write the database, and `days_since_sowing` is computed. `scripts/seed_demo.py` inserts the demo farmer, crop and mock loan.
+**Files created / changed:**
+- `backend/db.py`: connection helper (commits on success, rolls back on error, foreign keys on) and the schema. Tables: `farmers`, `crops`, `analyses` (full contract JSON plus a few query columns), `loans`, `loan_documents`. The file is `data/dharrakshak.sqlite3` (git-ignored), and `DHARRAKSHAK_DB` can point elsewhere.
+- `backend/repository.py`: the only module that touches SQL. It converts rows to contract models, computes `days_since_sowing` on every read, computes missing documents from the checklist, and seeds the demo data.
+- `backend/main.py`: on startup it creates the tables and seeds the demo farmer, crop, analysis and mock loan if the database is empty. Changes:
+  - New `PUT /api/crops/{id}` to edit a crop while keeping the same id and history.
+  - Analyses are saved to the database.
+  - A farmer with no loan records gets a **404 "No loan records for this farmer yet"** instead of fake data.
+- `backend/sample_store.py`: reduced to the sample loader plus the two placeholders (analysis, chat) that later components replace.
+- `scripts/reset_db.py`: wipes and reseeds the database. Use it before rehearsals and the final demo.
+- `tests/conftest.py` + `tests/test_api.py`: each test uses its own temporary database. 19 tests, including editing a crop, the new-farmer loan 404, and data surviving a restart.
+- Frontend: `saveCropProfile(form, cropId)` now edits, while `saveCropProfile(form)` registers a new crop. The ProfileScreen and FinanceScreen TODOs are updated (two save buttons, and a friendly "no loan yet" card).
 
-**Verify:** create a crop in `/docs`, restart the server, and the crop is still there.
+**Verify:**
+```bash
+pytest                                   # 19 passed
+uvicorn backend.main:app --reload        # create a crop in /docs, stop, restart: it's still there
+python scripts/reset_db.py               # back to a clean demo state
+```
 
 ---
 
-## ⬜ Component 4 — Pretrained image model (F1)
+## 🔜 Component 4 — Pretrained image model (F1)
 
 **Goal:** a real photo goes in, and the real top-3 ranked possibilities come out.
 
 **Steps:**
-1. Choose a PlantVillage-trained model on Hugging Face. Check its classes, license and input size, and record the choice in `docs/MODEL_CARD.md`.
+1. **Ask the team which model to use.** Then check its classes, license and input size, and record the choice in `docs/MODEL_CARD.md`.
 2. `backend/ml/classifier.py`: load the model once at startup, then preprocess (resize, normalize with the training values), run the model, apply softmax, take the top 3, map labels to EN/HI names, and apply the uncertainty threshold and crop-mismatch check.
 3. `shared/content/labels.json`: raw class names mapped to friendly EN/HI names.
 4. Add sample leaf photos to `data/samples/`.
@@ -193,16 +215,25 @@ The sidebar shows **Connected to server** and every screen loads its data from t
 
 ---
 
-## ⬜ Component 9 — Multilingual chatbot (F7)
+## ⬜ Component 9 — Multilingual chatbot + voice assistant (F7)
 
-**Goal:** a chatbot that answers in the farmer's language, grounded in their saved data.
+**Goal:** a chatbot that answers in the farmer's language, grounded in their saved data, that the farmer can also **speak to and hear answers from**.
+
+**Before starting, ask the team:** which LLM provider and which speech provider to use, and for their API keys. Options for Hindi and Indian languages include Sarvam AI, Google Cloud Speech/TTS, Azure Speech, ElevenLabs, OpenAI Whisper, and Bhashini. The browser's built-in Web Speech API is a free fallback, but its Hindi support varies by browser.
 
 **Files:**
-- `backend/services/chat.py`: builds the guardrail system prompt and a context package (profile, latest analysis, action cards, loan summary), calls the LLM, and returns a `ChatReply`. Falls back to canned answers from `chat_examples` if the API is unavailable.
-- `.env.example`: `ANTHROPIC_API_KEY=` (the real `.env` is git-ignored).
-- `requirements.txt`: add `anthropic`, `python-dotenv`.
+- `backend/services/chat.py`: builds the guardrail system prompt (no pesticide names or doses, no loan-approval promises, say "I don't know", reply in the chosen language) and a context package (profile, latest analysis, action cards, loan summary). It calls the LLM and returns a `ChatReply`. If the API is unavailable, it falls back to the saved answers with `is_fallback=true`.
+- `backend/services/voice.py`: speech-to-text (farmer's voice note to text in Hindi or English) and text-to-speech (reply text to audio in the same language).
+- `backend/main.py`: `POST /api/chat` uses the real LLM. New `POST /api/voice/chat` takes an audio clip, transcribes it, gets the grounded reply, and returns text plus audio.
+- `shared/contract.py`: voice request/response models (transcript, reply, audio).
+- Frontend: a mic button in the chat (record, then send), a "listening…" state, and auto-play of the spoken reply with a mute toggle. Owned by Teammate 4 together with the chat screen.
+- `.env.example`: placeholder names for the chosen keys (the real `.env` is git-ignored).
+- `requirements.txt`: the provider SDKs and `python-dotenv`.
 
-**Verify:** the Hindi loan-documents question gets the correct missing documents. A pesticide-dose question gets a polite refusal. With the key removed, it returns the fallback with `is_fallback=true`.
+**Verify:**
+- Typed or spoken in Hindi, "लोन के लिए कौन से कागज़ बाकी हैं?" gets the correct missing documents, spoken back in Hindi.
+- A pesticide-dose question gets a polite refusal.
+- With the keys removed, chat returns the fallback with `is_fallback=true`, and the mic button says voice is unavailable.
 
 ---
 
@@ -223,7 +254,7 @@ The sidebar shows **Connected to server** and every screen loads its data from t
 | 1 | `frontend/src/screens/ProfileScreen.jsx` | Crop registration form + profile card | `crop_profile` |
 | 2 | `frontend/src/screens/AnalysisScreen.jsx` | Prediction bars, risk badge, action cards, "Why?" box | `analysis` |
 | 3 | `frontend/src/screens/FinanceScreen.jsx` | Loan card, documents checklist (missing in red), schemes, MOCK tag | `loan_summary` |
-| 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Chat bubbles, input box, language selector, consistent styling | `chat_examples` |
+| 4 | `frontend/src/screens/ChatScreen.jsx` + app polish | Chat bubbles, input box, mic button and voice playback (after C9), language selector, consistent styling | `chat_examples` |
 
 Everyone builds against mock mode first. In Component 10 we flip the switch to the real backend.
 

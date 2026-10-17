@@ -5,7 +5,6 @@
 DharRakshak is an AI crop assistant. It turns a leaf photo, the farmer's crop profile and local context into prioritized, explainable next steps in the farmer's own language. It also offers loan and document guidance (mock data) and a multilingual chatbot.
 
 > **Status:** hackathon MVP, under construction. See [ROADMAP.md](ROADMAP.md) for progress and the order components are built in.
-
 ## Tech stack
 
 - **Backend:** Python 3.11+, FastAPI, SQLite
@@ -24,6 +23,7 @@ python scripts/check_sample_data.py
 # Backend (terminal 1) — API docs at http://localhost:8000/docs
 uvicorn backend.main:app --reload --port 8000
 pytest                              # run the backend tests
+python scripts/reset_db.py          # wipe the database back to the demo data
 
 # Frontend (terminal 2) — opens at http://localhost:5173
 cd frontend

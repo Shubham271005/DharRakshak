@@ -1,0 +1,249 @@
+"""
+Data access layer (Component 3).
+
+The ONLY module that reads or writes the database. Every function takes
+or returns models from shared/contract.py, so the rest of the backend
+never deals with SQL rows.
+
+Later components add to this file:
+- Component 5 stores real coordinates from geocoding in `create_crop`.
+- Component 7 adds marking documents as submitted.
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import date
+
+from backend.db import connect
+from backend.sample_store import sample
+from shared.contract import (
+    AnalysisResult,
+    CropProfile,
+    CropProfileCreate,
+    DocumentItem,
+    Loan,
+    LoanSummary,
+    LocalizedText,
+    Location,
+    RepaymentDue,
+    YieldRange,
+)
+
+
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+# ---------------------------------------------------------------------------
+# F2 — crops
+# ---------------------------------------------------------------------------
+
+_CROP_SELECT = """
+    SELECT c.*, f.name AS farmer_name, f.preferred_language
+    FROM crops c JOIN farmers f ON f.farmer_id = c.farmer_id
+"""
+
+
+def _row_to_crop(row) -> CropProfile:
+    """Convert a crops+farmers row into the contract model.
+
+    `days_since_sowing` is computed on every read, so it's always current.
+    """
+    sowing = date.fromisoformat(row["sowing_date"])
+    yield_estimate = None
+    if row["yield_min_kg"] is not None and row["yield_max_kg"] is not None:
+        yield_estimate = YieldRange(min_kg=row["yield_min_kg"], max_kg=row["yield_max_kg"])
+    return CropProfile(
+        crop_id=row["crop_id"],
+        farmer_name=row["farmer_name"],
+        preferred_language=row["preferred_language"],
+        crop_type=row["crop_type"],
+        variety=row["variety"],
+        sowing_date=sowing,
+        days_since_sowing=max(0, (date.today() - sowing).days),
+        area_acres=row["area_acres"],
+        location=Location(name=row["location_name"], latitude=row["latitude"], longitude=row["longitude"]),
+        stage=row["stage"],
+        expected_harvest_start=row["expected_harvest_start"],
+        expected_harvest_end=row["expected_harvest_end"],
+        yield_estimate=yield_estimate,
+    )
+
+
+def get_crop(crop_id: str) -> CropProfile | None:
+    with connect() as conn:
+        row = conn.execute(f"{_CROP_SELECT} WHERE c.crop_id = ?", (crop_id,)).fetchone()
+    return _row_to_crop(row) if row else None
+
+
+def _placeholder_coordinates() -> tuple[float, float]:
+    """Coordinates used until geocoding exists (Component 5 replaces this)."""
+    loc = sample().crop_profile.location
+    return loc.latitude, loc.longitude
+
+
+def create_crop(new: CropProfileCreate) -> CropProfile:
+    """Create a farmer and their crop from the registration form."""
+    farmer_id, crop_id = _new_id("farmer"), _new_id("crop")
+    lat, lon = _placeholder_coordinates()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
+            (farmer_id, new.farmer_name, new.preferred_language),
+        )
+        conn.execute(
+            """INSERT INTO crops (crop_id, farmer_id, crop_type, variety, sowing_date,
+                                  area_acres, location_name, latitude, longitude, stage)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (crop_id, farmer_id, new.crop_type, new.variety or None, new.sowing_date.isoformat(),
+             new.area_acres, new.location_name, lat, lon, new.stage.value),
+        )
+    return get_crop(crop_id)  # type: ignore[return-value]
+
+
+def update_crop(crop_id: str, changes: CropProfileCreate) -> CropProfile | None:
+    """Edit an existing crop (and its farmer's name/language). None if not found."""
+    with connect() as conn:
+        row = conn.execute("SELECT farmer_id, location_name FROM crops WHERE crop_id = ?", (crop_id,)).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            "UPDATE farmers SET name = ?, preferred_language = ? WHERE farmer_id = ?",
+            (changes.farmer_name, changes.preferred_language, row["farmer_id"]),
+        )
+        conn.execute(
+            """UPDATE crops SET crop_type = ?, variety = ?, sowing_date = ?, area_acres = ?,
+                                location_name = ?, stage = ?, updated_at = datetime('now')
+               WHERE crop_id = ?""",
+            (changes.crop_type, changes.variety or None, changes.sowing_date.isoformat(),
+             changes.area_acres, changes.location_name, changes.stage.value, crop_id),
+        )
+    return get_crop(crop_id)
+
+
+# ---------------------------------------------------------------------------
+# F1–F4 — analyses
+# ---------------------------------------------------------------------------
+
+def save_analysis(result: AnalysisResult) -> AnalysisResult:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO analyses (analysis_id, crop_id, created_at, top_label, risk_level, is_demo, result_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (result.analysis_id, result.crop_id, result.created_at.isoformat(),
+             result.predictions[0].label, result.risk.level.value, int(result.is_demo),
+             result.model_dump_json()),
+        )
+    return result
+
+
+def list_analyses(crop_id: str, limit: int = 50) -> list[AnalysisResult]:
+    """Analyses for a crop, newest first."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT result_json FROM analyses WHERE crop_id = ? ORDER BY created_at DESC LIMIT ?",
+            (crop_id, limit),
+        ).fetchall()
+    return [AnalysisResult.model_validate_json(r["result_json"]) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# F5 — loans (MOCK data only)
+# ---------------------------------------------------------------------------
+
+def get_loan_summary(crop_id: str) -> LoanSummary | None:
+    """Loan summary for the farmer who owns this crop, or None if they have
+    no loan records. `missing_document_codes` is computed from the checklist."""
+    with connect() as conn:
+        loan = conn.execute(
+            """SELECT l.* FROM loans l JOIN crops c ON c.farmer_id = l.farmer_id
+               WHERE c.crop_id = ? ORDER BY l.loan_id LIMIT 1""",
+            (crop_id,),
+        ).fetchone()
+        if loan is None:
+            return None
+        docs = conn.execute(
+            "SELECT code, name_json, submitted FROM loan_documents WHERE loan_id = ? ORDER BY position",
+            (loan["loan_id"],),
+        ).fetchall()
+
+    documents = [
+        DocumentItem(code=d["code"], name=LocalizedText.model_validate_json(d["name_json"]), submitted=bool(d["submitted"]))
+        for d in docs
+    ]
+    next_repayment = None
+    if loan["next_due_date"] is not None:
+        next_repayment = RepaymentDue(due_date=loan["next_due_date"], amount_inr=loan["next_due_amount_inr"])
+    return LoanSummary(
+        data_source=loan["data_source"],
+        crop_id=crop_id,
+        loan=Loan(
+            loan_id=loan["loan_id"],
+            loan_type=loan["loan_type"],
+            display_name=LocalizedText.model_validate_json(loan["display_name_json"]),
+            lender_name=loan["lender_name"],
+            status=loan["status"],
+            sanctioned_amount_inr=loan["sanctioned_amount_inr"],
+            outstanding_amount_inr=loan["outstanding_amount_inr"],
+            next_repayment=next_repayment,
+        ),
+        documents=documents,
+        missing_document_codes=[d.code for d in documents if not d.submitted],
+        # Scheme notes move to shared/content/schemes.json in Component 7.
+        schemes=sample().loan_summary.schemes,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Demo seed
+# ---------------------------------------------------------------------------
+
+DEMO_FARMER_ID = "farmer-demo-001"
+
+
+def seed_demo_if_empty() -> bool:
+    """Insert the demo farmer, crop, analysis and MOCK loan from
+    shared/sample_data.json if the database has no crops yet.
+    Returns True if it seeded. Safe to call on every startup."""
+    with connect() as conn:
+        if conn.execute("SELECT 1 FROM crops LIMIT 1").fetchone():
+            return False
+
+    demo = sample()
+    p = demo.crop_profile
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
+            (DEMO_FARMER_ID, p.farmer_name, p.preferred_language),
+        )
+        conn.execute(
+            """INSERT INTO crops (crop_id, farmer_id, crop_type, variety, sowing_date, area_acres,
+                                  location_name, latitude, longitude, stage,
+                                  expected_harvest_start, expected_harvest_end, yield_min_kg, yield_max_kg)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (p.crop_id, DEMO_FARMER_ID, p.crop_type, p.variety, p.sowing_date.isoformat(), p.area_acres,
+             p.location.name, p.location.latitude, p.location.longitude, p.stage.value,
+             p.expected_harvest_start and p.expected_harvest_start.isoformat(),
+             p.expected_harvest_end and p.expected_harvest_end.isoformat(),
+             p.yield_estimate and p.yield_estimate.min_kg, p.yield_estimate and p.yield_estimate.max_kg),
+        )
+        ls = demo.loan_summary
+        loan = ls.loan
+        conn.execute(
+            """INSERT INTO loans (loan_id, farmer_id, loan_type, display_name_json, lender_name, status,
+                                  sanctioned_amount_inr, outstanding_amount_inr,
+                                  next_due_date, next_due_amount_inr, data_source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (loan.loan_id, DEMO_FARMER_ID, loan.loan_type, loan.display_name.model_dump_json(),
+             loan.lender_name, loan.status.value, loan.sanctioned_amount_inr, loan.outstanding_amount_inr,
+             loan.next_repayment and loan.next_repayment.due_date.isoformat(),
+             loan.next_repayment and loan.next_repayment.amount_inr, ls.data_source),
+        )
+        conn.executemany(
+            "INSERT INTO loan_documents (loan_id, code, name_json, submitted, position) VALUES (?, ?, ?, ?, ?)",
+            [(loan.loan_id, d.code, d.name.model_dump_json(), int(d.submitted), i) for i, d in enumerate(ls.documents)],
+        )
+    save_analysis(demo.analysis)
+    return True

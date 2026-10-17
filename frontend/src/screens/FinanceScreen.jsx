@@ -32,7 +32,12 @@
  *         tr(verify_note) in italics (text-muted). If official_url exists,
  *         a link: <a href={url} target="_blank" rel="noreferrer">.
  *
- * TODO 5  Language: all labels via t(...); check in हिंदी.
+ * TODO 5  No loan yet. A newly registered farmer has no loan records, so
+ *         getLoanSummary throws an ApiError with error.status === 404.
+ *         Show a friendly "No loan records yet" card instead of the red
+ *         error box:  if (error?.status === 404) return <Card>…</Card>
+ *
+ * TODO 6  Language: all labels via t(...); check in हिंदी.
  *
  * DONE WHEN
  *   [ ] Matches the finance panel on slide 4 (KCC sample, ₹48,000
