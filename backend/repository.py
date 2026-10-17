@@ -5,8 +5,10 @@ The ONLY module that reads or writes the database. Every function takes
 or returns models from shared/contract.py, so the rest of the backend
 never deals with SQL rows.
 
+Coordinates are resolved by the caller (backend/main.py: GPS from the form,
+or Open-Meteo geocoding) and passed in — this module only stores data.
+
 Later components add to this file:
-- Component 5 stores real coordinates from geocoding in `create_crop`.
 - Component 7 adds marking documents as submitted.
 """
 
@@ -78,16 +80,9 @@ def get_crop(crop_id: str) -> CropProfile | None:
     return _row_to_crop(row) if row else None
 
 
-def _placeholder_coordinates() -> tuple[float, float]:
-    """Coordinates used until geocoding exists (Component 5 replaces this)."""
-    loc = sample().crop_profile.location
-    return loc.latitude, loc.longitude
-
-
-def create_crop(new: CropProfileCreate) -> CropProfile:
+def create_crop(new: CropProfileCreate, lat: float, lon: float) -> CropProfile:
     """Create a farmer and their crop from the registration form."""
     farmer_id, crop_id = _new_id("farmer"), _new_id("crop")
-    lat, lon = _placeholder_coordinates()
     with connect() as conn:
         conn.execute(
             "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
@@ -103,10 +98,10 @@ def create_crop(new: CropProfileCreate) -> CropProfile:
     return get_crop(crop_id)  # type: ignore[return-value]
 
 
-def update_crop(crop_id: str, changes: CropProfileCreate) -> CropProfile | None:
+def update_crop(crop_id: str, changes: CropProfileCreate, lat: float, lon: float) -> CropProfile | None:
     """Edit an existing crop (and its farmer's name/language). None if not found."""
     with connect() as conn:
-        row = conn.execute("SELECT farmer_id, location_name FROM crops WHERE crop_id = ?", (crop_id,)).fetchone()
+        row = conn.execute("SELECT farmer_id FROM crops WHERE crop_id = ?", (crop_id,)).fetchone()
         if row is None:
             return None
         conn.execute(
@@ -115,10 +110,11 @@ def update_crop(crop_id: str, changes: CropProfileCreate) -> CropProfile | None:
         )
         conn.execute(
             """UPDATE crops SET crop_type = ?, variety = ?, sowing_date = ?, area_acres = ?,
-                                location_name = ?, stage = ?, updated_at = datetime('now')
+                                location_name = ?, latitude = ?, longitude = ?, stage = ?,
+                                updated_at = datetime('now')
                WHERE crop_id = ?""",
             (changes.crop_type, changes.variety or None, changes.sowing_date.isoformat(),
-             changes.area_acres, changes.location_name, changes.stage.value, crop_id),
+             changes.area_acres, changes.location_name, lat, lon, changes.stage.value, crop_id),
         )
     return get_crop(crop_id)
 

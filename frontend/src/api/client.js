@@ -97,7 +97,10 @@ export async function getCropProfile(cropId) {
 /**
  * Save the registration form. `form` has the CropProfileCreate fields:
  * farmer_name, preferred_language, crop_type, variety, sowing_date
- * ("YYYY-MM-DD"), area_acres (number), location_name, stage.
+ * ("YYYY-MM-DD"), area_acres (number), location_name, stage — and
+ * optionally latitude + longitude (from getCurrentPosition below). Without
+ * coordinates the backend looks up location_name; an unknown place gives
+ * ApiError status 422 with a helpful message to show the farmer.
  *
  * - With `cropId`: EDITS that crop (PUT) — same crop_id, history kept.
  * - Without `cropId`: REGISTERS a new farmer + crop (POST) — returns a new
@@ -133,6 +136,39 @@ export async function saveCropProfile(form, cropId = null) {
     })
   }
   return postJSON('/crops', form)
+}
+
+/**
+ * Real recent + forecast weather at the crop's location (Open-Meteo).
+ * Shape: {source, rain_last_3_days_mm, avg_humidity_pct, avg_temp_c,
+ * rain_next_3_days_mm, max_rain_chance_next_3_days_pct, summary}.
+ * Throws ApiError 503 if the weather service is unreachable.
+ */
+export async function getWeather(cropId) {
+  if (isMockMode()) return mockReturn(sample.analysis.weather)
+  return request(`/crops/${encodeURIComponent(cropId)}/weather`)
+}
+
+/**
+ * Ask the browser for the phone/laptop's GPS position (the user must allow
+ * it). Resolves to {latitude, longitude}; rejects with an Error if denied
+ * or unavailable. Pass the result along with the form to saveCropProfile.
+ */
+export function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Location is not available on this device.'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({
+        latitude: Number(pos.coords.latitude.toFixed(5)),
+        longitude: Number(pos.coords.longitude.toFixed(5)),
+      }),
+      (err) => reject(new Error(err.message || 'Location permission was denied.')),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 600_000 },
+    )
+  })
 }
 
 // ---------------------------------------------------------------------------

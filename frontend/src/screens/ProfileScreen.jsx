@@ -2,6 +2,8 @@
  * SCREEN: My crop — registration form + profile card (F2)
  * OWNER:  Teammate 1
  * DATA:   getCropProfile(cropId)          -> CropProfile   (read)
+ *         getWeather(cropId)              -> Weather       (real, Open-Meteo)
+ *         getCurrentPosition()            -> {latitude, longitude}  (phone GPS)
  *         saveCropProfile(form, cropId)   -> CropProfile   (edit this crop)
  *         saveCropProfile(form)           -> CropProfile   (register a new crop)
  *         Fields: docs/CONTRACT.md, row "Crop registration + profile card"
@@ -45,6 +47,19 @@
  *         green "Saved" message. On ApiError: show error.message in red.
  *         Disable the buttons while saving. Data is stored in the database,
  *         so it survives a server restart (api mode).
+ *
+ * TODO 3b Location. Next to the village field add a "📍 Use my location"
+ *         button: `const pos = await getCurrentPosition()` and keep
+ *         pos.latitude / pos.longitude in the form state (send them with
+ *         saveCropProfile). If the farmer types a place instead, the backend
+ *         looks it up — an unknown place returns ApiError status 422 whose
+ *         message tells the farmer what to type; show it under the field.
+ *
+ * TODO 3c Weather card. Below the profile card, load
+ *         useApiData(() => getWeather(cropId), [cropId]) and show
+ *         tr(weather.summary) with a ☔ rain / 💧 humidity / 🌡 temperature
+ *         row. On error (503) show "Weather unavailable right now" instead
+ *         of the red error box.
  *
  * TODO 4  Language. Every label via t('your_key') — add the keys (en + hi)
  *         to src/i18n/uiText.js. Switch to हिंदी in the sidebar and check.

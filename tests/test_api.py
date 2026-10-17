@@ -1,5 +1,5 @@
 """
-Backend API tests (Components 2–4). Run from the repository root:
+Backend API tests (Components 2–5). Run from the repository root:
     pytest
 
 Each test calls the API exactly like the React app would, against a fresh
@@ -83,6 +83,47 @@ def test_update_crop_keeps_id(client):
     assert body["farmer_name"] == "Asha Devi"
 
 
+def test_create_crop_geocodes_location(client):
+    body = client.post("/api/crops", json=new_crop_payload(location_name="Karnal")).json()
+    assert (body["location"]["latitude"], body["location"]["longitude"]) == (29.69, 76.98)
+
+
+def test_create_crop_with_gps_skips_lookup(client, fake_open_meteo):
+    body = client.post("/api/crops", json=new_crop_payload(location_name="My farm", latitude=26.85, longitude=80.95)).json()
+    assert body["location"]["latitude"] == 26.85
+    assert fake_open_meteo.geocode_calls == []
+
+
+def test_only_one_coordinate_is_rejected(client):
+    assert client.post("/api/crops", json=new_crop_payload(latitude=26.85)).status_code == 422
+
+
+def test_unknown_location_is_422_with_help(client):
+    resp = client.post("/api/crops", json=new_crop_payload(location_name="Atlantis"))
+    assert resp.status_code == 422
+    assert "nearest town or district" in resp.json()["detail"]
+
+
+def test_geocoding_outage_is_503(client, fake_open_meteo):
+    fake_open_meteo.down = True
+    resp = client.post("/api/crops", json=new_crop_payload())
+    assert resp.status_code == 503
+    assert "allow location access" in resp.json()["detail"]
+
+
+def test_update_same_location_does_not_look_up_again(client, fake_open_meteo):
+    crop_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
+    calls = len(fake_open_meteo.geocode_calls)
+    client.put(f"/api/crops/{crop_id}", json=new_crop_payload(stage="flowering"))
+    assert len(fake_open_meteo.geocode_calls) == calls
+
+
+def test_update_new_location_moves_coordinates(client):
+    crop_id = client.post("/api/crops", json=new_crop_payload()).json()["crop_id"]
+    body = client.put(f"/api/crops/{crop_id}", json=new_crop_payload(location_name="Sonipat, Haryana")).json()
+    assert body["location"]["latitude"] == 28.99
+
+
 def test_update_unknown_crop_is_404(client):
     assert client.put("/api/crops/nope", json=new_crop_payload()).status_code == 404
 
@@ -95,6 +136,21 @@ def test_data_survives_restart(db_file):
         assert second.get(f"/api/crops/{crop_id}").status_code == 200
         # The demo seed must not be duplicated on the second start.
         assert len(second.get(f"/api/crops/{DEMO_CROP}/history").json()) == 1
+
+
+# ----- weather (C5) ------------------------------------------------------------
+
+def test_weather_endpoint_returns_real_source(client):
+    resp = client.get(f"/api/crops/{DEMO_CROP}/weather")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source"] == "open_meteo"
+    assert body["rain_last_3_days_mm"] == 27.7
+
+
+def test_weather_endpoint_outage_is_503(client, fake_open_meteo):
+    fake_open_meteo.down = True
+    assert client.get(f"/api/crops/{DEMO_CROP}/weather").status_code == 503
 
 
 # ----- analysis (F1–F4) -----------------------------------------------------
@@ -114,6 +170,19 @@ def test_analyze_uses_model_predictions(client):
     # Weather/risk/cards are still placeholders until C5–C6, so is_demo stays True.
     assert body["is_demo"] is True
     assert body["risk"]["is_estimate"] is True
+
+
+def test_analysis_includes_real_weather(client):
+    body = upload(client).json()
+    assert body["weather"]["source"] == "open_meteo"
+    assert body["weather"]["rain_next_3_days_mm"] == 6.5
+
+
+def test_analysis_still_works_when_weather_is_down(client, fake_open_meteo):
+    fake_open_meteo.down = True
+    resp = upload(client)
+    assert resp.status_code == 200
+    assert resp.json()["weather"] is None  # honest: no made-up weather
 
 
 def test_low_confidence_is_uncertain(client, fake_model):

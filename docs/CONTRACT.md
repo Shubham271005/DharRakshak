@@ -8,8 +8,9 @@ This page is for the frontend teammates. The real definitions are in `shared/con
 2. **Confidence is 0–1.** Show `0.68` as `68%` or as a bar. Always say "possible", never "confirmed".
 3. **Risk is an estimate.** Always show the word *estimate* next to the risk level.
 4. **Money is whole rupees.** Show `48000` as `₹48,000`.
-5. **Mock data is labelled.** If `data_source` is `"mock"` or the weather `source` is `"mock"`, show a visible **MOCK DATA** tag.
-6. **Never show pesticide names or doses.** The backend won't send any. Don't add any.
+5. **Weather can be missing.** `weather` is `null` when the weather service can't be reached. Show "Weather unavailable" and never invent numbers.
+6. **Mock data is labelled.** If `data_source` is `"mock"` or the weather `source` is `"mock"`, show a visible **MOCK DATA** tag.
+7. **Never show pesticide names or doses.** The backend won't send any. Don't add any.
 
 ## Which part of the sample file belongs to whom
 
@@ -22,7 +23,7 @@ This page is for the frontend teammates. The real definitions are in `shared/con
 
 ## How screens get data
 
-Never open `sample_data.json` or call `fetch()` directly. Use the functions in `frontend/src/api/client.js`: `getCropProfile`, `saveCropProfile`, `analyzeImage`, `getLatestAnalysis`, `getLoanSummary`, `sendChat`. They read the sample file in mock mode and the real backend in api mode.
+Never open `sample_data.json` or call `fetch()` directly. Use the functions in `frontend/src/api/client.js`: `getCropProfile`, `saveCropProfile`, `getWeather`, `getCurrentPosition`, `analyzeImage`, `getLatestAnalysis`, `getLoanSummary`, `sendChat`. They read the sample file in mock mode and the real backend in api mode.
 
 The easiest way to load data in a screen:
 

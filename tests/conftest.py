@@ -5,6 +5,9 @@ Shared test fixtures.
   touch the real data/dharrakshak.sqlite3 and never affect each other.
 - API tests use a FAKE image classifier (fast, deterministic, no 9 MB model
   needed). The real model is tested separately in test_classifier.py.
+- Open-Meteo (weather + geocoding) is replaced by recorded responses for
+  EVERY test (autouse), so tests never use the network. Set
+  `fake_open_meteo.down = True` in a test to simulate an outage.
 """
 
 import pytest
@@ -12,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.ml import classifier as clf
+from backend.services import geocoding, weather
 from shared.contract import Prediction
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -68,3 +72,60 @@ def client(db_file, fake_model):
     """A test client. `with` runs the app's startup (create tables + seed demo)."""
     with TestClient(app) as test_client:
         yield test_client
+
+
+# A real Open-Meteo response shape (Sonipat, 18 Oct 2026): 3 past days,
+# today, 3 forecast days.
+OPEN_METEO_DAILY = {
+    "timezone": "Asia/Kolkata",
+    "daily": {
+        "time": ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21"],
+        "precipitation_sum": [27.0, 0.7, 0.0, 0.0, 2.5, 4.0, 0.0],
+        "relative_humidity_2m_mean": [87, 81, 73, 66, 65, 68, 69],
+        "temperature_2m_mean": [22.3, 23.1, 24.4, 23.3, 23.1, 23.5, 24.1],
+        "precipitation_probability_max": [100, 31, 0, 0, 40, 65, 10],
+    },
+}
+
+KNOWN_PLACES = {
+    "karnal": [{"name": "Karnāl", "admin1": "Haryana", "admin2": "Karnal", "latitude": 29.69, "longitude": 76.98, "population": 286827}],
+    "sonipat": [{"name": "Sonīpat", "admin1": "Haryana", "admin2": "Sonipat", "latitude": 28.99, "longitude": 77.02, "population": 289333}],
+    # Two places with the same name in different states, to test hint matching.
+    "aurangabad": [
+        {"name": "Aurangabad", "admin1": "Maharashtra", "latitude": 19.88, "longitude": 75.34, "population": 1175116},
+        {"name": "Aurangabad", "admin1": "Bihar", "latitude": 24.75, "longitude": 84.37, "population": 102244},
+    ],
+}
+
+
+class FakeOpenMeteo:
+    """Records calls and serves canned data instead of the real APIs."""
+
+    def __init__(self):
+        self.down = False
+        self.weather_calls = 0
+        self.geocode_calls = []
+
+    def fetch_daily(self, latitude, longitude):
+        self.weather_calls += 1
+        if self.down:
+            raise weather.WeatherUnavailable("simulated outage")
+        return OPEN_METEO_DAILY
+
+    def search(self, name, count=5):
+        self.geocode_calls.append(name)
+        if self.down:
+            raise geocoding.GeocodingUnavailable("simulated outage")
+        return KNOWN_PLACES.get(geocoding._normalise(name), [])
+
+
+@pytest.fixture(autouse=True)
+def fake_open_meteo(monkeypatch):
+    fake = FakeOpenMeteo()
+    monkeypatch.setattr(weather, "fetch_daily", fake.fetch_daily)
+    monkeypatch.setattr(geocoding, "search", fake.search)
+    weather.clear_cache()
+    geocoding._geocode_cached.cache_clear()
+    yield fake
+    weather.clear_cache()
+    geocoding._geocode_cached.cache_clear()

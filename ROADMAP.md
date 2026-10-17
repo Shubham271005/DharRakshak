@@ -27,7 +27,8 @@ Dynaminds-IIITD/
 │   ├── db.py                   ← SQLite connection + schema          (C3)
 │   ├── repository.py           ← all database reads/writes           (C3)
 │   ├── ml/classifier.py        ← pretrained image model              (C4)
-│   ├── services/weather.py     ← Open-Meteo + mock fallback          (C5)
+│   ├── services/geocoding.py   ← place name → coordinates (Open-Meteo) (C5)
+│   ├── services/weather.py     ← real weather, honest when unavailable (C5)
 │   ├── engines/                ← risk.py, actions.py, explain.py     (C6)
 │   ├── services/loans.py       ← mock loans + document checker       (C7)
 │   ├── services/chat.py        ← grounded LLM chatbot                (C9)
@@ -194,17 +195,44 @@ pytest                                    # 31 passed
 
 ---
 
-## 🔜 Component 5 — Weather context
+## ✅ Component 5 — Weather context + location lookup
 
-**Goal:** real recent and forecast weather for the crop's location, with a clearly labelled fallback.
+**Goal:** real recent and forecast weather for the crop's location, and real coordinates for every farm.
 
-**Files:** `backend/services/weather.py` (Open-Meteo: past 3 days of rain plus humidity and temperature, with a timeout). If the call fails, it returns mock weather with `source="mock"`. `requirements.txt`: `requests` is already added.
+**Service:** [Open-Meteo](https://open-meteo.com), free with **no API key**, for both geocoding and weather.
 
-**Verify:** call it for the demo coordinates. With Wi-Fi off, it returns mock weather labelled "mock".
+**Files created / changed:**
+- `backend/services/geocoding.py`: turns a farmer-typed place ("Sonipat, Haryana") into coordinates.
+  - Searches within India.
+  - Uses the state or district as a hint ("Aurangabad, Bihar" vs Maharashtra).
+  - Falls back from village to district, and ignores accents and case.
+  - Caches successful lookups only.
+  - An unknown place returns **422** with a helpful message. An outage returns **503**.
+- `backend/services/weather.py`: one Open-Meteo call gives the **last 3 days** (total rain, average humidity and temperature) and the **next 3 days** (expected rain, highest chance of rain), plus an EN/HI summary that cites the source. Results are cached for 30 minutes per ~1 km cell.
+  - **Honesty rule:** if Open-Meteo is unreachable, weather is `null` and the analysis still works. Numbers are never made up. (This replaces the earlier plan of a "mock" fallback, per the team's real-data decision.)
+- `shared/contract.py`:
+  - `Weather` gets `rain_next_3_days_mm` and `max_rain_chance_next_3_days_pct` (optional, so older analyses still load).
+  - `CropProfileCreate` gets optional `latitude`/`longitude` from the phone's GPS. Both must be sent together, and when present the name lookup is skipped.
+- `backend/main.py`:
+  - Registering or editing a crop resolves coordinates: GPS first, then stored coordinates if the name is unchanged, then a lookup.
+  - New `GET /api/crops/{id}/weather`.
+  - Each analysis includes real weather.
+- `backend/pipeline.py`: predictions + **real weather**. Risk, cards and explanation are still placeholders until Component 6.
+- `backend/repository.py`: stores the coordinates it's given. The placeholder coordinates are removed.
+- Frontend `src/api/client.js`: new `getWeather(cropId)` and `getCurrentPosition()` (browser GPS). The Profile and Analysis TODOs are updated (a "Use my location" button, a weather card, and "Weather unavailable" handling).
+- `tests/test_weather.py` and new API tests. Open-Meteo is faked for every test (recorded real responses, with simulated outages).
+
+**Verify:**
+```bash
+pytest                                   # 58 passed, no network needed
+uvicorn backend.main:app --reload
+# In /docs: POST /api/crops with location_name "Karnal, Haryana" gives real coordinates.
+# GET /api/crops/{id}/weather gives a real Open-Meteo summary in EN + HI.
+```
 
 ---
 
-## ⬜ Component 6 — Risk, action-card and explanation engines (F3, F2, F4)
+## 🔜 Component 6 — Risk, action-card and explanation engines (F3, F2, F4)
 
 **Goal:** turn predictions, weather and crop stage into a risk estimate, ranked action cards and a "Why?" text, all traceable to rules.
 

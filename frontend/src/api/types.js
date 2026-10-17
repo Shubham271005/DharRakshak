@@ -27,6 +27,17 @@
  * @property {{min_kg: number, max_kg: number}|null} yield_estimate   null = "range pending"
  */
 
+/**
+ * @typedef {object} Weather
+ * @property {'open_meteo'|'mock'} source            'mock' only in sample data
+ * @property {number} rain_last_3_days_mm
+ * @property {number} avg_humidity_pct              last 3 days
+ * @property {number} avg_temp_c                    last 3 days
+ * @property {number|null} rain_next_3_days_mm
+ * @property {number|null} max_rain_chance_next_3_days_pct
+ * @property {LocalizedText} summary
+ */
+
 /** @typedef {{label: string, display_name: LocalizedText, confidence: number}} Prediction */
 /** @typedef {{code: string, points: number, text: LocalizedText}} RiskReason */
 /** @typedef {{card_id: string, priority: number, title: LocalizedText, detail: LocalizedText, why: LocalizedText}} ActionCard */
@@ -41,7 +52,7 @@
  * @property {boolean} uncertain
  * @property {LocalizedText|null} uncertainty_message
  * @property {boolean} crop_mismatch
- * @property {{source: 'open_meteo'|'mock', rain_last_3_days_mm: number, avg_humidity_pct: number, avg_temp_c: number, summary: LocalizedText}|null} weather
+ * @property {Weather|null} weather                null = weather service unreachable (never made up)
  * @property {{level: 'low'|'moderate'|'elevated', score: number, is_estimate: true, reasons: RiskReason[]}} risk
  * @property {ActionCard[]} action_cards
  * @property {{summary: LocalizedText, verify: LocalizedText}} explanation

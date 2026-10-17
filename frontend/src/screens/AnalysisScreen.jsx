@@ -38,6 +38,8 @@
  *           low → "leaf", moderate → "gold", elevated → "rust"
  *         ALWAYS followed by t('estimate'). Below: each reason
  *         tr(r.text) as a list, and tr(result.weather.summary) if present.
+ *         result.weather can be null (weather service unreachable) — then
+ *         show a small grey "Weather unavailable" note; never invent values.
  *
  * TODO 6  Action cards (F2). Sort by priority:
  *           [...result.action_cards].sort((a, b) => a.priority - b.priority)

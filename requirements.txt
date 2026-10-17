@@ -18,6 +18,8 @@ torch>=2.4
 torchvision>=0.19
 pillow>=10
 
+# Component 5 — weather + geocoding (Open-Meteo, no API key)
+httpx>=0.27               # HTTP client (also used by FastAPI's TestClient)
+
 # Testing
 pytest>=8
-httpx>=0.27               # used by FastAPI's TestClient

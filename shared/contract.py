@@ -137,7 +137,7 @@ class CropProfileCreate(BaseModel):
 
     The backend turns this into a full `CropProfile`: it assigns `crop_id`,
     computes `days_since_sowing`, and looks up latitude/longitude from
-    `location_name` (geocoding arrives in Component 5).
+    `location_name` (Open-Meteo geocoding) unless coordinates are supplied.
     """
 
     farmer_name: str = Field(..., min_length=1, max_length=100)
@@ -148,11 +148,17 @@ class CropProfileCreate(BaseModel):
     area_acres: float = Field(..., gt=0, le=1000)
     location_name: str = Field(..., min_length=1)
     stage: CropStage
+    # Optional exact position (e.g. from the phone's GPS). When given, the
+    # backend skips looking up `location_name`. Send both or neither.
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
 
     @model_validator(mode="after")
     def _sowing_not_in_future(self) -> "CropProfileCreate":
         if self.sowing_date > date.today():
             raise ValueError("sowing_date cannot be in the future")
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("send both latitude and longitude, or neither")
         return self
 
 
@@ -173,8 +179,11 @@ class Weather(BaseModel):
 
     source: WeatherSource
     rain_last_3_days_mm: float = Field(..., ge=0)
-    avg_humidity_pct: float = Field(..., ge=0, le=100)
-    avg_temp_c: float
+    avg_humidity_pct: float = Field(..., ge=0, le=100, description="Average over the last 3 days")
+    avg_temp_c: float = Field(..., description="Average over the last 3 days")
+    # Forecast (Component 5). Optional so older saved analyses still load.
+    rain_next_3_days_mm: Optional[float] = Field(None, ge=0)
+    max_rain_chance_next_3_days_pct: Optional[float] = Field(None, ge=0, le=100)
     summary: LocalizedText
 
 
