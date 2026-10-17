@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets — never commit API keys
+.env
+
+# Local data produced at runtime
+*.sqlite3
+*.db
+data/uploads/
+
+# Downloaded model weights (large; fetched by the backend on first run)
+models/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

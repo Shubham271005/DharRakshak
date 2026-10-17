@@ -1,0 +1,236 @@
+{
+  "crop_profile": {
+    "crop_id": "crop-demo-001",
+    "farmer_name": "Demo Farmer",
+    "preferred_language": "hi",
+    "crop_type": "tomato",
+    "variety": null,
+    "sowing_date": "2026-08-26",
+    "days_since_sowing": 52,
+    "area_acres": 0.5,
+    "location": {
+      "name": "Sonipat, Haryana",
+      "latitude": 28.99,
+      "longitude": 77.02
+    },
+    "stage": "flowering",
+    "expected_harvest_start": "2026-11-10",
+    "expected_harvest_end": "2026-11-30",
+    "yield_estimate": null
+  },
+
+  "analysis": {
+    "analysis_id": "an-demo-001",
+    "crop_id": "crop-demo-001",
+    "created_at": "2026-10-17T10:30:00+05:30",
+    "is_demo": true,
+    "predictions": [
+      {
+        "label": "Tomato___Early_blight",
+        "display_name": { "en": "Possible early blight", "hi": "संभावित अगेती झुलसा (अर्ली ब्लाइट)" },
+        "confidence": 0.68
+      },
+      {
+        "label": "Tomato___Septoria_leaf_spot",
+        "display_name": { "en": "Possible Septoria leaf spot", "hi": "संभावित सेप्टोरिया पत्ती धब्बा" },
+        "confidence": 0.19
+      },
+      {
+        "label": "other",
+        "display_name": { "en": "Other / uncertain", "hi": "अन्य / अनिश्चित" },
+        "confidence": 0.13
+      }
+    ],
+    "uncertain": false,
+    "uncertainty_message": null,
+    "crop_mismatch": false,
+    "weather": {
+      "source": "mock",
+      "rain_last_3_days_mm": 18.5,
+      "avg_humidity_pct": 86,
+      "avg_temp_c": 26.4,
+      "summary": {
+        "en": "Wet weather for the last 3 days (mock data).",
+        "hi": "पिछले 3 दिनों से नम मौसम (नमूना डेटा)।"
+      }
+    },
+    "risk": {
+      "level": "elevated",
+      "score": 7,
+      "is_estimate": true,
+      "reasons": [
+        {
+          "code": "suspicious_spots",
+          "points": 3,
+          "text": {
+            "en": "The image shows suspicious leaf spots.",
+            "hi": "तस्वीर में पत्तियों पर संदिग्ध धब्बे दिख रहे हैं।"
+          }
+        },
+        {
+          "code": "wet_weather",
+          "points": 3,
+          "text": {
+            "en": "Recent wet, humid weather may favor some fungal diseases.",
+            "hi": "हाल का नम मौसम कुछ फफूंद रोगों को बढ़ावा दे सकता है।"
+          }
+        },
+        {
+          "code": "sensitive_stage",
+          "points": 1,
+          "text": {
+            "en": "The crop is at the flowering stage.",
+            "hi": "फसल फूल आने की अवस्था में है।"
+          }
+        }
+      ]
+    },
+    "action_cards": [
+      {
+        "card_id": "inspect_nearby",
+        "priority": 1,
+        "title": { "en": "Inspect nearby plants", "hi": "आस-पास के पौधे जाँचें" },
+        "detail": {
+          "en": "Check neighboring plants for similar spots today.",
+          "hi": "आज ही आस-पास के पौधों में ऐसे ही धब्बे देखें।"
+        },
+        "why": {
+          "en": "Spots on one plant can spread; checking early shows how widespread the problem is.",
+          "hi": "एक पौधे के धब्बे फैल सकते हैं; जल्दी जाँच से पता चलता है कि समस्या कितनी फैली है।"
+        }
+      },
+      {
+        "card_id": "check_local_guidance",
+        "priority": 2,
+        "title": { "en": "Check local guidance", "hi": "स्थानीय सलाह लें" },
+        "detail": {
+          "en": "Confirm with your local agriculture extension office before any treatment.",
+          "hi": "कोई भी उपचार करने से पहले अपने स्थानीय कृषि विस्तार कार्यालय से पुष्टि करें।"
+        },
+        "why": {
+          "en": "The model's result is a possibility, not a confirmed diagnosis.",
+          "hi": "मॉडल का परिणाम एक संभावना है, पक्का निदान नहीं।"
+        }
+      },
+      {
+        "card_id": "monitor_weather",
+        "priority": 3,
+        "title": { "en": "Monitor the weather", "hi": "मौसम पर नज़र रखें" },
+        "detail": {
+          "en": "Watch for continued rain or high humidity this week.",
+          "hi": "इस हफ्ते लगातार बारिश या ज़्यादा नमी पर ध्यान दें।"
+        },
+        "why": {
+          "en": "Continued wet conditions can increase disease risk.",
+          "hi": "लगातार नम मौसम से रोग का खतरा बढ़ सकता है।"
+        }
+      }
+    ],
+    "explanation": {
+      "summary": {
+        "en": "Inspection is prioritized because the image shows suspicious leaf spots and the recent wet conditions may favor some plant diseases.",
+        "hi": "जाँच को प्राथमिकता दी गई है क्योंकि तस्वीर में संदिग्ध धब्बे हैं और हाल का नम मौसम कुछ पौधों के रोगों को बढ़ावा दे सकता है।"
+      },
+      "verify": {
+        "en": "This is not a confirmed diagnosis. Check nearby plants and confirm with local experts.",
+        "hi": "यह पक्का निदान नहीं है। आस-पास के पौधे जाँचें और स्थानीय विशेषज्ञों से पुष्टि करें।"
+      }
+    }
+  },
+
+  "loan_summary": {
+    "data_source": "mock",
+    "crop_id": "crop-demo-001",
+    "loan": {
+      "loan_id": "loan-demo-001",
+      "loan_type": "kcc",
+      "display_name": { "en": "Kisan Credit Card loan (sample)", "hi": "किसान क्रेडिट कार्ड लोन (नमूना)" },
+      "lender_name": "Sample Bank (mock)",
+      "status": "active",
+      "sanctioned_amount_inr": 60000,
+      "outstanding_amount_inr": 48000,
+      "next_repayment": {
+        "due_date": "2026-12-15",
+        "amount_inr": 12000
+      }
+    },
+    "documents": [
+      { "code": "id_proof", "name": { "en": "Identity proof", "hi": "पहचान पत्र" }, "submitted": true },
+      { "code": "address_proof", "name": { "en": "Address proof", "hi": "पते का प्रमाण" }, "submitted": true },
+      { "code": "bank_passbook", "name": { "en": "Bank passbook copy", "hi": "बैंक पासबुक की कॉपी" }, "submitted": true },
+      { "code": "land_record", "name": { "en": "Land record copy", "hi": "ज़मीन के रिकॉर्ड की कॉपी" }, "submitted": false },
+      { "code": "passport_photo", "name": { "en": "Passport-size photo", "hi": "पासपोर्ट साइज़ फोटो" }, "submitted": false }
+    ],
+    "missing_document_codes": ["land_record", "passport_photo"],
+    "schemes": [
+      {
+        "code": "miss",
+        "name": { "en": "Interest subvention on crop loans (MISS)", "hi": "फसल ऋण पर ब्याज सहायता (MISS)" },
+        "summary": {
+          "en": "Government interest support on short-term crop loans such as KCC.",
+          "hi": "किसान क्रेडिट कार्ड जैसे अल्पकालिक फसल ऋणों पर सरकारी ब्याज सहायता।"
+        },
+        "official_url": null,
+        "verify_note": {
+          "en": "Check eligibility and current terms with your bank.",
+          "hi": "पात्रता और मौजूदा शर्तें अपने बैंक से जाँचें।"
+        }
+      },
+      {
+        "code": "pmfby",
+        "name": { "en": "PMFBY crop insurance", "hi": "प्रधानमंत्री फसल बीमा योजना (PMFBY)" },
+        "summary": {
+          "en": "Government crop insurance scheme covering yield losses.",
+          "hi": "फसल नुकसान को कवर करने वाली सरकारी फसल बीमा योजना।"
+        },
+        "official_url": "https://pmfby.gov.in",
+        "verify_note": {
+          "en": "Check enrolment dates and eligibility on the official portal.",
+          "hi": "नामांकन की तारीखें और पात्रता आधिकारिक पोर्टल पर जाँचें।"
+        }
+      }
+    ]
+  },
+
+  "chat_examples": [
+    {
+      "request": {
+        "crop_id": "crop-demo-001",
+        "message": "लोन के लिए कौन से कागज़ बाकी हैं?",
+        "lang": "hi"
+      },
+      "reply": {
+        "reply": "दो कागज़ बाकी हैं: ज़मीन के रिकॉर्ड की कॉपी और पासपोर्ट साइज़ फोटो। कृपया अपनी बैंक शाखा से पुष्टि करें।",
+        "lang": "hi",
+        "used_context": ["loan_summary"],
+        "is_fallback": false
+      }
+    },
+    {
+      "request": {
+        "crop_id": "crop-demo-001",
+        "message": "Why should I inspect nearby plants?",
+        "lang": "en"
+      },
+      "reply": {
+        "reply": "Your tomato crop is flowering and the photo shows suspicious spots, possibly early blight. With the recent wet weather, such spots can spread, so checking nearby plants today shows how widespread it is. This is not a confirmed diagnosis — please confirm with your local agriculture extension office.",
+        "lang": "en",
+        "used_context": ["crop_profile", "analysis"],
+        "is_fallback": false
+      }
+    },
+    {
+      "request": {
+        "crop_id": "crop-demo-001",
+        "message": "Which pesticide should I spray and how much?",
+        "lang": "en"
+      },
+      "reply": {
+        "reply": "I can't recommend specific pesticides or doses — the right product depends on your crop, region and local rules. Please ask your local agriculture extension office or Krishi Vigyan Kendra before any treatment.",
+        "lang": "en",
+        "used_context": [],
+        "is_fallback": false
+      }
+    }
+  ]
+}
