@@ -8,8 +8,11 @@
  *   [ ] Add a "days until next repayment" countdown.
  *   [ ] Demo prep: tick "Land record copy" live and show the progress bar move.
  */
-import { BadgeIndianRupee, Banknote, CalendarClock, CheckCircle2, CircleAlert, ExternalLink, FileCheck2, Info, Landmark } from 'lucide-react'
-import { useState } from 'react'
+import { BadgeIndianRupee, Banknote, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Clock, ExternalLink, FileCheck2, History, Info, Landmark, Percent, ShieldCheck } from 'lucide-react'
+import { useRef, useState } from 'react'
+import pmfbyImg from '../assets/schemes/pmfby.svg'
+import pmkisanImg from '../assets/schemes/pmkisan.svg'
+import { BANKS, PAST_LOANS } from '../data/banks.js'
 import { getLoanSummary, setDocumentSubmitted } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
 import { Card, ErrorBox, Loading, MockTag, Notice, Pill, ProgressBar, ScreenHeader, Stat } from '../components/ui.jsx'
@@ -17,6 +20,137 @@ import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { formatDate, formatINR } from '../lib/format.js'
 
 const STATUS_TONES = { active: 'moss', overdue: 'rust', applied: 'gold', closed: 'muted' }
+
+/** Horizontal, swipeable bank comparison (scroll-snap + arrow buttons). */
+function BankSlider() {
+  const { t, tr } = useLanguage()
+  const track = useRef(null)
+  const [index, setIndex] = useState(0)
+  const go = (i) => {
+    const el = track.current
+    const next = Math.max(0, Math.min(BANKS.length - 1, i))
+    el?.children[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
+    setIndex(next)
+  }
+  const onScroll = () => {
+    const el = track.current
+    if (!el) return
+    const w = el.children[0]?.offsetWidth || 1
+    setIndex(Math.round(el.scrollLeft / (w + 16)))
+  }
+  const arrow = 'flex h-8 w-8 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5 transition hover:bg-tint disabled:opacity-40'
+  return (
+    <Card title={t('bank_compare_title')} icon={Percent}
+      action={<div className="flex gap-1.5">
+        <button className={arrow} onClick={() => go(index - 1)} disabled={index === 0} aria-label="Previous"><ChevronLeft className="h-4 w-4" /></button>
+        <button className={arrow} onClick={() => go(index + 1)} disabled={index >= BANKS.length - 1} aria-label="Next"><ChevronRight className="h-4 w-4" /></button>
+      </div>}>
+      <p className="mb-3 text-xs text-muted">{t('bank_compare_hint')}</p>
+      <div ref={track} onScroll={onScroll}
+        className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {BANKS.map((b) => (
+          <article key={b.id} className="group/card flex w-[85%] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:shadow-lg sm:w-[calc(50%-8px)] xl:w-[calc(33.333%-11px)]">
+            <div className={`leaf-pattern bg-gradient-to-br ${b.tone} p-4 text-white`}>
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-sm font-extrabold ring-1 ring-white/30">{b.short}</span>
+                <div className="min-w-0">
+                  <p className="truncate font-bold">{b.name}</p>
+                  <p className="text-xs text-white/80">KCC</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-end gap-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-white/75">{t('interest_rate')}</p>
+                  <p className="text-3xl font-extrabold leading-none">{b.rate.toFixed(1)}%<span className="text-sm font-semibold text-white/80"> {t('per_year')}</span></p>
+                </div>
+                <div className="rounded-lg bg-white/15 px-2 py-1 text-xs">
+                  {t('effective_rate')}: <b>{b.effective.toFixed(1)}%</b>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col gap-3 p-4 text-sm">
+              <dl className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-cream/70 p-2"><dt className="text-muted">{t('above_3_lakh')}</dt><dd className="font-bold text-forest">{b.above}</dd></div>
+                <div className="rounded-lg bg-cream/70 p-2"><dt className="text-muted">{t('collateral_free')}</dt><dd className="font-bold text-forest">{formatINR(b.maxNoCollateral)}</dd></div>
+                <div className="rounded-lg bg-cream/70 p-2"><dt className="text-muted">{t('processing_fee')}</dt><dd className="font-bold text-forest">{tr(b.fee)}</dd></div>
+                <div className="rounded-lg bg-cream/70 p-2"><dt className="flex items-center gap-1 text-muted"><Clock className="h-3 w-3" />{t('approval_time')}</dt><dd className="font-bold text-forest">{b.days} {t('days_unit')}</dd></div>
+              </dl>
+              <div>
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">{t('docs_required')}</p>
+                <ul className="space-y-1">
+                  {b.docs.map((d) => (
+                    <li key={d.en} className="flex items-start gap-2 text-[13px]"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-moss" />{tr(d)}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="flex gap-1.5">
+          {BANKS.map((b, i) => (
+            <button key={b.id} onClick={() => go(i)} aria-label={b.name}
+              className={`h-2 rounded-full transition-all ${i === index ? 'w-6 bg-moss' : 'w-2 bg-moss/25'}`} />
+          ))}
+        </div>
+        <p className="text-[11px] text-muted">{t('indicative_note')}</p>
+      </div>
+    </Card>
+  )
+}
+
+function PastLoansCard() {
+  const { lang, t, tr } = useLanguage()
+  return (
+    <Card title={t('past_loans_title')} icon={History} action={<MockTag />}>
+      <ol className="relative space-y-3 border-l-2 border-tint pl-5">
+        {PAST_LOANS.map((l) => (
+          <li key={l.id} className="relative">
+            <span className={`absolute -left-[27px] top-1 h-3.5 w-3.5 rounded-full ring-4 ring-white ${l.onTime ? 'bg-moss' : 'bg-gold'}`} />
+            <div className="rounded-xl border border-black/5 bg-gradient-to-b from-white to-cream/50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-forest">{tr(l.name)}</p>
+                <Pill tone={l.onTime ? 'moss' : 'gold'}>{l.onTime ? t('repaid_on_time') : t('repaid_late')}</Pill>
+              </div>
+              <p className="mt-0.5 text-xs text-muted">{l.bank} · {formatDate(l.from, lang)} – {formatDate(l.to, lang)}</p>
+              <div className="mt-2 flex gap-4 text-sm">
+                <span><b className="text-forest">{formatINR(l.amount)}</b></span>
+                <span className="text-muted">{l.rate.toFixed(1)}% {t('per_year')}</span>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  )
+}
+
+const SCHEME_IMAGES = [
+  { img: pmkisanImg, title: 'pmkisan_title', caption: 'pmkisan_caption', url: 'https://pmkisan.gov.in' },
+  { img: pmfbyImg, title: 'pmfby_title', caption: 'pmfby_caption', url: 'https://pmfby.gov.in' },
+]
+
+function SchemeGallery() {
+  const { t } = useLanguage()
+  return (
+    <Card title={t('gov_schemes_title')} icon={ShieldCheck} className="lg:col-span-2" bodyClassName="grid gap-4 p-4 sm:grid-cols-2">
+      {SCHEME_IMAGES.map((s) => (
+        <a key={s.title} href={s.url} target="_blank" rel="noreferrer"
+          className="group/card overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+          <div className="overflow-hidden">
+            <img src={s.img} alt={t(s.title)} className="aspect-[2/1] w-full object-cover transition duration-500 group-hover/card:scale-105" />
+          </div>
+          <div className="p-3">
+            <p className="font-bold text-forest">{t(s.title)}</p>
+            <p className="mt-0.5 text-sm leading-snug text-muted">{t(s.caption)}</p>
+            <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-moss">{t('visit_site')} <ExternalLink className="h-3 w-3" /></p>
+          </div>
+        </a>
+      ))}
+    </Card>
+  )
+}
 
 function LoanCard({ summary }) {
   const { lang, t, tr } = useLanguage()
@@ -137,6 +271,11 @@ export default function FinanceScreen({ cropId }) {
           <LoanCard summary={summary} />
           <div className="grid gap-4 lg:grid-cols-2">
             <DocumentsCard summary={summary} cropId={cropId} onUpdate={setUpdated} />
+            <PastLoansCard />
+          </div>
+          <BankSlider />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <SchemeGallery />
             <SchemesCard schemes={summary.schemes} />
           </div>
         </>
