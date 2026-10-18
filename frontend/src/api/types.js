@@ -55,7 +55,7 @@
  * @property {Weather|null} weather                null = weather service unreachable (never made up)
  * @property {{level: 'low'|'moderate'|'elevated', score: number, is_estimate: true, reasons: RiskReason[]}} risk
  * @property {ActionCard[]} action_cards
- * @property {{summary: LocalizedText, verify: LocalizedText}} explanation
+ * @property {{summary: LocalizedText, verify: LocalizedText, about?: LocalizedText, look_for?: LocalizedText}} explanation
  */
 
 /**

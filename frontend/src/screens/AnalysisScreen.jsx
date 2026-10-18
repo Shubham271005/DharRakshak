@@ -10,7 +10,7 @@
  *   [ ] Make the history rows clickable to re-open an older result.
  *   [ ] Check every label in each language with a native speaker.
  */
-import { AlertTriangle, Camera, CheckCircle2, CloudRain, History, ImageUp, Lightbulb, ListChecks, Loader2, ScanSearch, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, BookOpen, Camera, CheckCircle2, CloudRain, Eye, History, ImageUp, Lightbulb, ListChecks, Loader2, ScanSearch, ShieldAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { analyzeImage, getHistory } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
@@ -78,13 +78,19 @@ function UploadPanel({ onResult, cropId }) {
   )
 }
 
+const RISK_GLOW = {
+  elevated: 'bg-gradient-to-br from-rust/10 via-white to-white ring-1 ring-rust/15',
+  moderate: 'bg-gradient-to-br from-gold/15 via-white to-white ring-1 ring-gold/20',
+  low: 'bg-gradient-to-br from-leaf/15 via-white to-white ring-1 ring-leaf/20',
+}
+
 function Result({ result }) {
   const { lang, t, tr } = useLanguage()
   const cards = [...result.action_cards].sort((a, b) => a.priority - b.priority)
   return (
-    <div className="space-y-4">
-      {/* Headline: top possibility + risk */}
-      <Card>
+    <div className="stagger space-y-4">
+      {/* Headline: top possibility + risk, tinted by risk level */}
+      <Card className={RISK_GLOW[result.risk.level] ?? ''}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -142,23 +148,46 @@ function Result({ result }) {
 
       <Card title={t('actions_title')} icon={CheckCircle2} bodyClassName="grid gap-3 md:grid-cols-3">
         {cards.map((card) => (
-          <div key={card.card_id} className="flex flex-col rounded-xl border border-black/5 bg-cream/50 p-3">
+          <div key={card.card_id} className="flex flex-col rounded-xl border border-black/5 bg-gradient-to-b from-white to-cream/60 p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
             <div className="mb-1.5 flex items-start gap-2">
               <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${card.priority === 1 ? 'bg-rust' : 'bg-gold'}`}>{card.priority}</span>
               <h3 className="text-sm font-semibold leading-snug text-forest">{tr(card.title)}</h3>
             </div>
             <p className="flex-1 text-sm leading-snug">{tr(card.detail)}</p>
-            <details className="mt-2 text-xs">
-              <summary className="cursor-pointer font-semibold text-moss">{t('why')}</summary>
-              <p className="mt-1 leading-relaxed text-muted">{tr(card.why)}</p>
-            </details>
+            <p className="mt-2.5 flex items-start gap-1.5 border-t border-black/5 pt-2 text-xs leading-relaxed text-muted">
+              <Lightbulb className="mt-px h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />
+              <span><span className="font-semibold text-moss">{t('why')}</span> {tr(card.why)}</span>
+            </p>
           </div>
         ))}
       </Card>
 
-      <Card title={t('why_title')} icon={Lightbulb} className="bg-tint/40">
-        <p className="text-sm leading-relaxed">{tr(result.explanation.summary)}</p>
-        <p className="mt-2 text-sm font-semibold text-forest">{tr(result.explanation.verify)}</p>
+      <Card title={t('why_title')} icon={Lightbulb}>
+        <div className="grid gap-3 md:grid-cols-3">
+          {result.explanation.about && (
+            <div className="rounded-xl bg-emerald-50/70 p-3 ring-1 ring-emerald-200/60">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-emerald-800">
+                <BookOpen className="h-3.5 w-3.5" aria-hidden />{t('about_disease')}
+              </p>
+              <p className="text-sm leading-relaxed">{tr(result.explanation.about)}</p>
+            </div>
+          )}
+          {result.explanation.look_for && (
+            <div className="rounded-xl bg-sky-50/70 p-3 ring-1 ring-sky-200/60">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-sky-800">
+                <Eye className="h-3.5 w-3.5" aria-hidden />{t('look_for_signs')}
+              </p>
+              <p className="text-sm leading-relaxed">{tr(result.explanation.look_for)}</p>
+            </div>
+          )}
+          <div className={`rounded-xl bg-amber-50/70 p-3 ring-1 ring-amber-200/60 ${result.explanation.about ? '' : 'md:col-span-3'}`}>
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800">
+              <ShieldAlert className="h-3.5 w-3.5" aria-hidden />{t('risk_reasoning')}
+            </p>
+            <p className="text-sm leading-relaxed">{tr(result.explanation.summary)}</p>
+          </div>
+        </div>
+        <Notice tone="gold" icon={AlertTriangle} className="mt-3 font-semibold">{tr(result.explanation.verify)}</Notice>
       </Card>
     </div>
   )
@@ -168,18 +197,37 @@ function HistoryCard({ history, currentId, onOpen }) {
   const { lang, t, tr } = useLanguage()
   if (history.length === 0) return null
   return (
-    <Card title={t('history_title')} icon={History} bodyClassName="p-0">
-      <ul className="divide-y divide-tint text-sm">
-        {history.slice(0, 8).map((a) => (
-          <li key={a.analysis_id}>
-            <button onClick={() => onOpen(a)}
-              className={`flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2 text-left hover:bg-cream ${a.analysis_id === currentId ? 'bg-tint/40' : ''}`}>
-              <span className="w-24 shrink-0 text-xs text-muted">{formatDate(a.created_at, lang)}</span>
-              <span className="min-w-0 flex-1 truncate font-medium">{tr(a.predictions[0].display_name)}</span>
-              <RiskBadge level={a.risk.level} />
-            </button>
-          </li>
-        ))}
+    <Card title={`${t('history_title')} · ${history.length}`} icon={History} bodyClassName="p-3">
+      <ul className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
+        {history.slice(0, 9).map((a) => {
+          const top = a.predictions[0]
+          const next = [...a.action_cards].sort((x, y) => x.priority - y.priority)[0]
+          const active = a.analysis_id === currentId
+          return (
+            <li key={a.analysis_id}>
+              <button onClick={() => onOpen(a)}
+                className={`group/h flex h-full w-full flex-col gap-1.5 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
+                  active ? 'border-moss/40 bg-tint/50 ring-1 ring-moss/20' : 'border-black/5 bg-gradient-to-b from-white to-cream/50'}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium text-muted">{formatDate(a.created_at, lang)}</span>
+                  <RiskBadge level={a.risk.level} />
+                </div>
+                <p className="font-semibold leading-snug text-forest">{tr(top.display_name)}</p>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-tint">
+                    <div className="h-full rounded-full bg-gradient-to-r from-leaf to-moss" style={{ width: `${Math.round(top.confidence * 100)}%` }} />
+                  </div>
+                  <span className="text-[11px] font-semibold tabular-nums text-muted">{Math.round(top.confidence * 100)}% {t('model_confidence_short2')}</span>
+                </div>
+                {next && (
+                  <p className="truncate text-xs text-muted">
+                    <span className="font-semibold text-moss">{t('next_step_short')}:</span> {tr(next.title)}
+                  </p>
+                )}
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </Card>
   )

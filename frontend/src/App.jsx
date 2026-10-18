@@ -86,7 +86,7 @@ export default function App() {
       <Sidebar screens={SCREENS} current={screenId} onSelect={setScreenId} />
       <div className="min-w-0 flex-1">
         <MobileHeader />
-        <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-7">
+        <main className="mx-auto w-full max-w-[1760px] px-4 pb-24 pt-4 md:px-6 md:pb-8 md:pt-6 xl:px-10">
           {/* `key` resets the error boundary when you switch screens */}
           <ErrorBoundary key={screenId}>
             <Component cropId={cropId} onCropChange={setCropId} onNavigate={setScreenId} />

@@ -173,8 +173,13 @@ def test_analyze_uses_model_predictions(client):
     # Fake model: tomato early blight 81%; recorded weather: 27.7 mm recent rain,
     # rain expected; demo crop is flowering → elevated.
     assert body["risk"]["level"] == "elevated"
-    assert [c["card_id"] for c in body["action_cards"]] == ["inspect_nearby", "check_local_guidance", "keep_leaves_dry"]
+    # Early blight's own steps (disease_advice.json) come first, then the generic check.
+    assert [c["card_id"] for c in body["action_cards"]] == [
+        "Tomato___Early_blight:1", "Tomato___Early_blight:2", "check_local_guidance"]
+    assert body["action_cards"][0]["title"]["en"] == "Remove lower spotted leaves"
     assert body["explanation"]["summary"]["en"].startswith("Inspection priority is elevated")
+    assert "Early blight" in body["explanation"]["about"]["en"]
+    assert body["explanation"]["look_for"]["hi"]
 
 
 def test_analysis_includes_real_weather(client):

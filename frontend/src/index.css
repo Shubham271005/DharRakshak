@@ -20,12 +20,68 @@
   --color-ink: #1B2A20;       /* body text */
   --color-muted: #5E6B60;     /* secondary text */
 
-  /* System fonts only (works offline at the venue). Devanagari fonts are
-     listed so Hindi renders well on Windows, macOS, Linux and Android. */
-  --font-sans: system-ui, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari",
+  /* Plus Jakarta Sans is bundled (works offline at the venue). Devanagari fonts
+     are listed so Hindi renders well on Windows, macOS, Linux and Android. */
+  --font-sans: "Plus Jakarta Sans Variable", "Inter", system-ui, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari",
     "Nirmala UI", "Kohinoor Devanagari", Arial, sans-serif;
+
+  /* Motion */
+  --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.3s ease-out both;
+  --animate-grow: grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
 }
 
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* Slightly larger base size: every rem-based Tailwind size scales with it. */
+html { font-size: 17px; }
+@media (min-width: 1536px) { html { font-size: 18px; } }
+
 body {
-  @apply bg-cream text-ink antialiased;
+  @apply text-ink antialiased;
+  /* Soft field-light background: warm cream with faint green glows. */
+  background:
+    radial-gradient(1100px 500px at 100% -10%, rgb(127 166 90 / 0.14), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(201 162 39 / 0.10), transparent 60%),
+    #F6F4EC;
+  background-attachment: fixed;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection { background: rgb(127 166 90 / 0.35); }
+:focus-visible { outline: 2px solid #2E6B3F; outline-offset: 2px; border-radius: 8px; }
+
+/* Slim, branded scrollbars */
+* { scrollbar-width: thin; scrollbar-color: rgb(46 107 63 / 0.35) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgb(46 107 63 / 0.3); border-radius: 99px; }
+
+/* Subtle leaf texture for dark green surfaces (sidebar, hero). Drawn on a
+   ::before overlay so it sits on top of any bg-gradient-* utility. In the
+   components layer so utilities like `sticky` still override `relative`. */
+@layer components {
+  .leaf-pattern { position: relative; isolation: isolate; }
+  .leaf-pattern::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.06) 0 2px, transparent 2px),
+      radial-gradient(circle at 70% 60%, rgb(255 255 255 / 0.04) 0 1.5px, transparent 1.5px);
+    background-size: 28px 28px, 22px 22px;
+  }
+}
+
+/* Stagger children: each card rises a little after the previous one. */
+.stagger > * { animation: var(--animate-rise); }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

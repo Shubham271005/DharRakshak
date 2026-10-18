@@ -58,7 +58,7 @@ PAUSE_SECONDS = 8
 CONTENT_FILES = [
     "shared/content/labels.json", "shared/content/risk_rules.json", "shared/content/action_cards.json",
     "shared/content/crops.json", "shared/content/loan_documents.json", "shared/content/schemes.json",
-    "shared/content/messages.json", "shared/sample_data.json",
+    "shared/content/messages.json", "shared/content/disease_advice.json", "shared/sample_data.json",
 ]
 
 SYSTEM = """You translate text for DharRakshak, a farming app for small farmers in India.

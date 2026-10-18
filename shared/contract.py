@@ -248,6 +248,8 @@ class Explanation(BaseModel):
 
     summary: LocalizedText
     verify: LocalizedText = Field(..., description="What the farmer should check before acting")
+    about: LocalizedText | None = Field(None, description="What the detected disease is and how it spreads")
+    look_for: LocalizedText | None = Field(None, description="Signs in the field that confirm it")
 
 
 class AnalysisResult(BaseModel):

@@ -37,4 +37,12 @@ def build_explanation(facts: Facts, risk: Risk) -> Explanation:
         verify = templates["verify"]["healthy"]
     else:
         verify = templates["verify"]["disease"]
-    return Explanation(summary=summary, verify=LocalizedText(**verify))
+    # Disease-specific background (what it is, what to look for) so the
+    # explanation is about THIS disease, not only the generic risk reasons.
+    advice = load("disease_advice")["advice"].get(facts.top.label) if facts.disease_detected else None
+    return Explanation(
+        summary=summary,
+        verify=LocalizedText(**verify),
+        about=LocalizedText(**advice["about"]) if advice else None,
+        look_for=LocalizedText(**advice["look_for"]) if advice else None,
+    )

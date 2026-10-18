@@ -65,7 +65,7 @@ def test_fungal_disease_in_wet_weather_at_flowering_is_elevated():
     assert risk.level.value == "elevated"
     assert codes(risk) == ["disease_high_confidence", "wet_recent_disease", "rain_forecast_disease", "sensitive_stage"]
     assert risk.score == 3 + 2 + 1 + 1
-    assert card_ids(cards) == ["inspect_nearby", "check_local_guidance", "keep_leaves_dry"]
+    assert card_ids(cards) == ["Tomato___Early_blight:1", "Tomato___Early_blight:2", "check_local_guidance"]
     assert "27.7 mm rain" in risk.reasons[1].text.en
     assert "not a confirmed diagnosis" in expl.verify.en
 
@@ -126,9 +126,19 @@ def test_insect_spread_virus_suggests_checking_insects():
 
 
 def test_contact_virus_suggests_hygiene():
-    # Mosaic: inspect (90) and guidance (80) outrank clean_tools (75) in a top-3 of 3.
+    # Mosaic's own steps (90, 89) lead with hand/tool washing, then guidance (80).
     _, cards, _ = analyse("Tomato___Tomato_mosaic_virus", 0.9, wx=weather(**DRY))
-    assert card_ids(cards) == ["inspect_nearby", "check_local_guidance", "clean_tools"]
+    assert card_ids(cards) == ["Tomato___Tomato_mosaic_virus:1", "Tomato___Tomato_mosaic_virus:2", "check_local_guidance"]
+    assert "Wash hands" in cards[0].detail.en
+
+
+def test_every_disease_has_its_own_advice():
+    from backend.engines.content import load
+    advice = load("disease_advice")["advice"]
+    for c in load("labels")["classes"]:
+        if not c["healthy"]:
+            entry = advice[c["label"]]
+            assert entry["about"]["en"] and entry["look_for"]["hi"] and len(entry["steps"]) == 2
 
 
 def test_crop_mismatch_card_comes_first_and_names_the_crop():
@@ -174,7 +184,7 @@ BANNED = [
 ]
 
 
-@pytest.mark.parametrize("name", ["action_cards", "risk_rules"])
+@pytest.mark.parametrize("name", ["action_cards", "risk_rules", "disease_advice"])
 def test_no_treatment_or_dose_advice_anywhere(name):
     # Everything farmer-facing except the "_about"/"when" notes for developers.
     data = json.loads((CONTENT_DIR / f"{name}.json").read_text(encoding="utf-8"))

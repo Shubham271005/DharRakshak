@@ -152,5 +152,10 @@
   "checks_count": "{count} leaf checks",
   "last_check": "last",
   "switch_crop": "Switch crop",
-  "upload_to_see_result": "Upload a leaf photo to see the result here. Earlier checks are listed below — tap one to open it."
+  "upload_to_see_result": "Upload a leaf photo to see the result here. Earlier checks are listed below — tap one to open it.",
+  "about_disease": "About this disease",
+  "look_for_signs": "Confirm in your field",
+  "risk_reasoning": "Why the risk is rated this way",
+  "next_step_short": "Next",
+  "model_confidence_short2": "confidence"
 }

@@ -3,7 +3,10 @@ Action-card engine (F2): Facts → ranked ActionCards.
 
 1. Decide which cards are ELIGIBLE (conditions below).
 2. Sort eligible cards by `weight` from shared/content/action_cards.json.
-3. Keep the top `max_cards` (3) and number them 1, 2, 3.
+3. When a disease is detected, its own steps from
+   shared/content/disease_advice.json join the list (weights 90, 89), so the
+   advice changes with the disease instead of always being generic.
+4. Keep the top `max_cards` (3) and number them 1, 2, 3.
 
 Cards only ever suggest checking, verifying, monitoring and basic field
 hygiene — no pesticide names or doses (enforced by tests/test_engines.py).
@@ -33,22 +36,38 @@ ELIGIBLE: dict[str, Callable[[Facts], bool]] = {
     "recheck_photo": lambda f: True,
 }
 
+DISEASE_STEP_WEIGHTS = (90, 89)  # below retake_photo / check_crop, above the generic cards
+
+
+def disease_steps(facts: Facts) -> list[tuple[int, str, dict]]:
+    """(weight, card_id, template) for the detected disease's own steps."""
+    if not facts.disease_detected:
+        return []
+    steps = load("disease_advice")["advice"].get(facts.top.label, {}).get("steps", [])
+    return [(w, f"{facts.top.label}:{i}", step) for i, (w, step) in enumerate(zip(DISEASE_STEP_WEIGHTS, steps), start=1)]
+
 
 def choose_cards(facts: Facts) -> list[ActionCard]:
     content = load("action_cards")
     templates = content["cards"]
     values = facts.template_values()
 
-    eligible = [card_id for card_id, condition in ELIGIBLE.items() if condition(facts)]
-    eligible.sort(key=lambda card_id: templates[card_id]["weight"], reverse=True)
+    eligible = [(templates[card_id]["weight"], card_id, templates[card_id])
+                for card_id, condition in ELIGIBLE.items() if condition(facts)]
+    specific = disease_steps(facts)
+    if specific:
+        # The disease's own steps replace the generic "inspect nearby" card.
+        eligible = [c for c in eligible if c[1] != "inspect_nearby"]
+    eligible += specific
+    eligible.sort(key=lambda c: c[0], reverse=True)
 
     return [
         ActionCard(
             card_id=card_id,
             priority=position,
-            title=fill(templates[card_id]["title"], values),
-            detail=fill(templates[card_id]["detail"], values),
-            why=fill(templates[card_id]["why"], values),
+            title=fill(template["title"], values),
+            detail=fill(template["detail"], values),
+            why=fill(template["why"], values),
         )
-        for position, card_id in enumerate(eligible[: content["max_cards"]], start=1)
+        for position, (_, card_id, template) in enumerate(eligible[: content["max_cards"]], start=1)
     ]
