@@ -2,6 +2,10 @@
 
 *From crop symptoms to smarter farming decisions.*
 
+**🌐 Live demo: https://dharrakshak.vercel.app**  ·  API: https://dharrakshak-api.onrender.com/docs
+
+> The free backend sleeps after 15 minutes idle — the first load can take 30–60 seconds.
+
 DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a leaf. The app identifies **possible** problems with an image model tuned for real field photos, combines that with **real local weather** and the crop's growth stage, and gives a **risk estimate**, **ranked next steps** and a plain-language **"Why?"**. It works in **English, Hindi, Marathi, Punjabi, Haryanvi and Bhojpuri**. It also tracks **loan documents** (sample data) and has a **multilingual chatbot you can talk to**.
 
 ## Features
