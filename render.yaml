@@ -1,0 +1,25 @@
+# Render Blueprint — one-click backend deploy (free plan).
+# Render reads this file when you open:
+#   https://render.com/deploy?repo=https://github.com/Shubham271005/Dynaminds-IIITD
+services:
+  - type: web
+    name: dharrakshak-api
+    runtime: python
+    plan: free
+    region: singapore            # closest Render region to India
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DHARRAKSHAK_MODEL
+        value: daksh-mobilenetv2
+      - key: DHARRAKSHAK_RUNTIME
+        value: onnx
+      - key: DHARRAKSHAK_THREADS
+        value: "1"
+      - key: DHARRAKSHAK_DB          # resets on restart; the demo farmer is re-created
+        value: /tmp/dharrakshak.sqlite3
+      - key: GROQ_API_KEY            # Render asks you for this when you create the service
+        sync: false

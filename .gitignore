@@ -14,8 +14,12 @@ data/uploads/
 data/eval/
 data/eval_field/
 
-# Downloaded model weights (large; fetched by the backend on first run)
-models/
+# Downloaded model weights (large; fetched by scripts/download_model.py) — except the
+# 9 MB ONNX copy of the Daksh model, which the free Render deploy needs from git.
+models/*
+!models/plant-disease-mobilenetv2/
+models/plant-disease-mobilenetv2/*
+!models/plant-disease-mobilenetv2/mobilenetv2_plant.onnx
 
 # Editors / OS
 .vscode/
@@ -25,3 +29,6 @@ models/
 # Node / React frontend
 node_modules/
 frontend/dist/
+
+# Deploy build folders
+build/

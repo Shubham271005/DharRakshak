@@ -123,3 +123,17 @@ this is the fifth component draft for our prototype at hackShift IIITD
 
 ##5th commit
 ##6th commit
+## Deploy (free): backend on Render, frontend on Vercel
+
+**1. Backend on Render** (free plan; the model runs with ONNX Runtime and uses about 120 MB of RAM):
+1. Open **https://render.com/deploy?repo=https://github.com/Shubham271005/Dynaminds-IIITD** and sign in with GitHub.
+2. Render reads `render.yaml`. Paste your **GROQ_API_KEY** when asked, then click **Apply**.
+3. Wait for the build (about 3–5 minutes). Your API is at `https://dharrakshak-api.onrender.com`; check `/api/health`.
+
+The free plan sleeps after 15 minutes idle, so the first request then takes 30–60 seconds. Data resets on restart (the demo farmer is re-created).
+
+**2. Frontend on Vercel:**
+1. Go to **vercel.com → Add New → Project → Import** `Dynaminds-IIITD` → **Deploy**. `vercel.json` already sets the build.
+2. If Render's address differs from the one above, set `VITE_API_BASE` in Vercel → Settings → Environment Variables, then redeploy.
+
+Optional: `deploy/hf-space/` + `scripts/deploy_hf_space.py` deploy the full PyTorch backend to a Hugging Face Docker Space (requires HF PRO).

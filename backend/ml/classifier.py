@@ -117,7 +117,8 @@ def weights_path() -> Path:
     """Main weights file of the selected model (used by tests and scripts)."""
     name = selected_model()
     if MODELS[name].get("legacy"):
-        return model_folder(name) / "mobilenetv2_plant.pth"
+        onnx = model_folder(name) / "mobilenetv2_plant.onnx"
+        return onnx if onnx.exists() else model_folder(name) / "mobilenetv2_plant.pth"
     files = [f for f in MODELS[name]["files"] if f.endswith((".bin", ".safetensors"))]
     return model_folder(name) / files[0]
 
@@ -167,21 +168,27 @@ class PlantDiseaseClassifier:
     """Loads the selected model once and classifies leaf photos. Thread-safe."""
 
     def __init__(self, model_name: str | None = None) -> None:
-        import torch
-
-        from backend.ml.models import DakshMobileNetV2, HuggingFaceBackend
+        from backend.ml.models import DakshMobileNetV2, DakshOnnx, HuggingFaceBackend
 
         self.model_name = model_name or selected_model()
         folder = model_folder(self.model_name)
         legacy = MODELS[self.model_name].get("legacy")
         main_file = folder / ("mobilenetv2_plant.pth" if legacy else
                               [f for f in MODELS[self.model_name]["files"] if f.endswith((".bin", ".safetensors"))][0])
-        if not main_file.exists():
-            raise ModelNotAvailable(f"Model files not found in {folder}. Run: python scripts/download_model.py")
-        self.backend = DakshMobileNetV2(main_file) if legacy else HuggingFaceBackend(folder)
+        onnx_file = folder / "mobilenetv2_plant.onnx"
+        use_onnx = legacy and onnx_file.exists() and os.getenv("DHARRAKSHAK_RUNTIME", "onnx") == "onnx"
+        if use_onnx:
+            # Same model, ONNX runtime: no PyTorch needed (small servers, faster start).
+            self.backend = DakshOnnx(onnx_file)
+        else:
+            if not main_file.exists():
+                raise ModelNotAvailable(f"Model files not found in {folder}. Run: python scripts/download_model.py")
+            import torch
+
+            self.backend = DakshMobileNetV2(main_file) if legacy else HuggingFaceBackend(folder)
+            torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
         self.labels = load_labels()
         self._crop_of = np.array([c.crop for c in self.labels])
-        torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
         log.info("Image model ready: %s", self.model_name)
 
     @staticmethod

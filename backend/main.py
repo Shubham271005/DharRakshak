@@ -84,11 +84,14 @@ app = FastAPI(
     "Loan data is MOCK — there is no bank integration.",
 )
 
-# Allow the React dev server to call the API directly too (useful if the
-# Vite proxy isn't used, e.g. when opening a production build).
+# Which websites may call this API from the browser: the local dev server,
+# any Vercel deployment (*.vercel.app), plus extra origins listed in
+# DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173",
+                   *[o.strip() for o in os.getenv("DHARRAKSHAK_CORS_ORIGINS", "").split(",") if o.strip()]],
+    allow_origin_regex=r"https://[a-z0-9-]+\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )

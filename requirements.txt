@@ -17,6 +17,9 @@ python-multipart>=0.0.9   # needed for photo uploads
 torch>=2.4
 torchvision>=0.19
 pillow>=10
+transformers>=4.44          # Hugging Face models (default image model)
+huggingface_hub>=0.24       # model download (scripts/download_model.py)
+opencv-python-headless>=4.9 # leaf-photo preprocessing (backend/ml/preprocess.py)
 
 # Component 5 — weather + geocoding (Open-Meteo, no API key)
 httpx>=0.27               # HTTP client (also used by FastAPI's TestClient)

@@ -119,6 +119,37 @@ class DakshMobileNetV2(Backend):
             return self._torch.softmax(out, 1)[0].numpy()
 
 
+class DakshOnnx(Backend):
+    """The same Daksh model exported to ONNX (scripts/export_onnx.py).
+
+    Runs with onnxruntime (~15 MB) instead of PyTorch (~770 MB), so the backend
+    fits small free servers (Render, 512 MB). Preprocessing mirrors the PyTorch
+    version: resize to 224×224, scale to 0–1, ImageNet mean/std.
+    """
+
+    name = "mobilenetv2-daksh-onnx"
+    MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+    def __init__(self, onnx_path: Path):
+        import os
+
+        import onnxruntime as ort
+
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = int(os.getenv("DHARRAKSHAK_THREADS", "2"))
+        self._sess = ort.InferenceSession(str(onnx_path), sess_options=opts, providers=["CPUExecutionProvider"])
+        self._input = self._sess.get_inputs()[0].name
+
+    def probs(self, image: Image.Image) -> np.ndarray:
+        rgb = image.convert("RGB").resize((224, 224), Image.BILINEAR)
+        x = (np.asarray(rgb, dtype=np.float32) / 255.0 - self.MEAN) / self.STD
+        x = x.transpose(2, 0, 1)[None].astype(np.float32)  # HWC -> 1×CHW
+        logits = self._sess.run(None, {self._input: x})[0][0]
+        e = np.exp(logits - logits.max())
+        return e / e.sum()  # class order is already ours (alphabetical PlantVillage)
+
+
 class HuggingFaceBackend(Backend):
     """Any transformers image-classification model saved in a local folder."""
 

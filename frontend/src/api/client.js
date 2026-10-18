@@ -18,6 +18,9 @@ import sample from '../../../shared/sample_data.json'
 
 export const API_MODE = import.meta.env.VITE_API_MODE === 'api' ? 'api' : 'mock'
 export const isMockMode = () => API_MODE === 'mock'
+// Where the backend lives. Empty = same site (local dev: Vite forwards /api to
+// :8000). In production set VITE_API_BASE, e.g. https://<user>-dharrakshak-api.hf.space
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
 
 /** Thrown for any failed request. `status` is the HTTP code (0 = network down). */
 export class ApiError extends Error {
@@ -43,7 +46,7 @@ const mockReturn = async (value) => {
 async function request(path, options = {}) {
   let response
   try {
-    response = await fetch(`/api${path}`, options)
+    response = await fetch(`${API_BASE}/api${path}`, options)
   } catch {
     throw new ApiError('Cannot reach the DharRakshak server. Is the backend running on port 8000?')
   }
