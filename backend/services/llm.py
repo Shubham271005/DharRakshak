@@ -66,7 +66,14 @@ def chat_complete(messages: list[dict], max_tokens: int = 500, temperature: floa
             continue
         if resp.status_code != 200:
             raise LLMUnavailable(f"{model}: HTTP {resp.status_code} {resp.text[:200]}")
-        text = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+        try:
+            text = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+        except (ValueError, KeyError, IndexError, TypeError) as err:
+            # A 200 with an unexpected body (a proxy's error page, an API shape
+            # change) must degrade to the saved answer, not become a 500.
+            last_error = f"{model}: unusable response ({err!r})"
+            log.warning("Chat response unreadable, trying fallback: %s", last_error)
+            continue
         if text:
             return text, model
         last_error = f"{model}: empty reply"
@@ -115,4 +122,10 @@ def transcribe(audio: bytes, filename: str, content_type: str, lang: str | None 
         raise LLMUnavailable(f"Speech-to-text request failed: {err}") from err
     if resp.status_code != 200:
         raise LLMUnavailable(f"Speech-to-text failed: HTTP {resp.status_code} {resp.text[:200]}")
-    return clean_transcript(resp.json())
+    try:
+        payload = resp.json()
+    except ValueError as err:
+        raise LLMUnavailable(f"Speech-to-text returned an unreadable response: {err}") from err
+    if not isinstance(payload, dict):
+        raise LLMUnavailable("Speech-to-text returned an unexpected response shape.")
+    return clean_transcript(payload)

@@ -14,15 +14,16 @@ reaches 62% top-1 / 85% top-3 on the same photos:
      checks (blur, dark, blank, tiny). Leaf crop / CLAHE / white balance /
      denoise exist but are OFF: they did not help real-world accuracy.
   3. Flip test-time augmentation: average the photo and its mirror image.
-  4. Crop-aware ranking: the farmer registered their crop, so only that
-     crop's classes are ranked (the single biggest improvement).
+  4. Ranking: all 38 classes are ranked and the top 3 are shown with the
+     model's real probabilities. The registered crop is used only to WARN
+     (crop_mismatch) when the winning class belongs to another crop — it does
+     not filter or re-rank, because filtering hid genuine cross-crop errors.
   5. Honest confidence:
-       - uncertain if the top-2 gap (within the crop) is < 0.3,
-         or the photo is blurry/dark/blank/tiny;
-       - "may not be your crop" warning if the photo puts < 0.1% of its
-         probability on the registered crop (calibrated for few false alarms);
-       - crops the model knows only ONE class for (e.g. healthy blueberry)
-         are always flagged as limited support.
+       - uncertain if the top-1 probability is < 0.50
+         (UNCERTAIN_THRESHOLD), or the photo is blurry/dark/blank/tiny;
+       - "may not be your crop" warning when the top class is another crop.
+     `registered_crop_mass` is still reported for the evaluation scripts, but
+     no live decision reads it.
 """
 
 from __future__ import annotations
@@ -81,15 +82,15 @@ DEFAULT_MODEL = "daksh-mobilenetv2"  # the team's chosen model (Daksh159/plant-d
 
 TOP_K = 3
 USE_FLIP_TTA = True
-# Calibrated on 89 PlantDoc field photos (scripts/eval_model.py):
-# gap < 0.3 → 43% accurate vs 65% otherwise, so the flag is informative.
-MARGIN_THRESHOLD = 0.30          # top-1 minus top-2 (within the crop); below = uncertain
-UNCERTAIN_THRESHOLD = 0.50       # used only when no crop is registered
-# Probability the photo puts on the registered crop; below = "may not be your
-# crop". At 0.02 it falsely warned on 30% of genuine photos; 0.001 keeps false
-# alarms at ~4.5% but only catches ~31% of wrong-crop photos (crop identity is
-# the model's weak spot on field photos — see docs/MODEL_CARD.md).
-CROP_MASS_THRESHOLD = 0.001
+# A photo whose top-1 probability is below this is reported as uncertain.
+# (Measured on 89 PlantDoc field photos — see docs/MODEL_CARD.md.)
+UNCERTAIN_THRESHOLD = 0.50
+# A small file can declare an enormous canvas — a "decompression bomb":
+# 445 KB of PNG becomes 432 MB of pixel data. Capped well above any phone
+# photo (a 48 MP camera is the current ceiling) and well below the size that
+# would exhaust a 512 MB server. Checked on the declared size, BEFORE the
+# pixels are decoded.
+MAX_IMAGE_PIXELS = 40_000_000
 
 
 class ModelNotAvailable(RuntimeError):
@@ -193,12 +194,22 @@ class PlantDiseaseClassifier:
 
     @staticmethod
     def _decode(image_bytes: bytes):
+        """Bytes -> PIL image, refusing anything that would exhaust memory."""
         from PIL import Image, UnidentifiedImageError
 
         try:
             image = Image.open(io.BytesIO(image_bytes))
+            # Refuse on the DECLARED size, before image.load() allocates the
+            # pixel buffer. An 8 MB upload budget alone does not bound memory:
+            # a highly compressible 12000x12000 PNG is 445 KB on the wire but
+            # 432 MB once decoded, which is enough to OOM the free server.
+            if image.width * image.height > MAX_IMAGE_PIXELS:
+                raise InvalidImage(
+                    f"The photo is too large ({image.width}x{image.height} pixels). "
+                    "Please upload a photo under 40 megapixels."
+                )
             image.load()
-        except (UnidentifiedImageError, OSError) as err:
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as err:
             raise InvalidImage("The file could not be read as an image.") from err
         return image
 
@@ -222,18 +233,16 @@ class PlantDiseaseClassifier:
         # crop is only used to warn when the photo looks like a different crop.
         crop_classes = self._crop_of == registered_crop
         mass = float(probs[crop_classes].sum()) if registered_crop and crop_classes.any() else None
-        ranked_probs = probs
-        order = [int(i) for i in np.argsort(-ranked_probs)][:TOP_K]
-        # Rank within the registered crop, but SHOW the model's real probability.
-        # (Re-scaling within the crop inflated confidence — a crop with a single
-        # class, e.g. orange, always showed 100%.)
+        # Show the model's real probability, never a re-scaled one: normalising
+        # within the crop inflated confidence (a crop the model knows one class
+        # for, e.g. orange, then always reported 100%).
+        order = [int(i) for i in np.argsort(-probs)][:TOP_K]
         predictions = [
             Prediction(label=self.labels[i].label, display_name=display_name(self.labels[i]),
                        confidence=round(float(probs[i]), 4))
             for i in order
         ]
-        top_p = ranked_probs[order[0]]
-        second = ranked_probs[order[1]] if len(order) > 1 else 0.0
+        top_p = probs[order[0]]
 
         # Warn (without changing the prediction) if the model's answer is for another crop.
         crop_mismatch = registered_crop is not None and self.labels[order[0]].crop != registered_crop

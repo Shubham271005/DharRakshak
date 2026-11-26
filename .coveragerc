@@ -1,0 +1,16 @@
+[run]
+source = backend, shared
+branch = False
+
+[report]
+# Lines that cannot run in a normal test: runtime imports of torch
+# (backend/ml/models.py backends) and the `pragma: no cover` interface stub.
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    import torch
+    from torch
+
+[html]
+directory = data/coverage

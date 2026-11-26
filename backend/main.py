@@ -45,7 +45,7 @@ from backend.db import init_db
 from backend.ml import classifier as clf
 from backend.pipeline import run_analysis
 from backend.services import chat as chat_service
-from backend.services import geocoding, llm, weather
+from backend.services import geocoding, llm, ratelimit, weather
 
 log = logging.getLogger("dharrakshak")
 from shared.contract import (
@@ -123,11 +123,31 @@ async def reject_oversized_uploads(request: Request, call_next):
 # Which websites may call this API from the browser: the local dev server,
 # any Vercel deployment (*.vercel.app), plus extra origins listed in
 # DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
+# (Configured above, next to the catch-all handler that also needs it.)
+
+
+# Which websites may call this API from the browser: the local dev server,
+# any Vercel deployment (*.vercel.app), plus extra origins listed in
+# DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
+CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173",
+                *[o.strip() for o in os.getenv("DHARRAKSHAK_CORS_ORIGINS", "").split(",") if o.strip()]]
+CORS_ORIGIN_REGEX = r"https://[a-z0-9-]+\.vercel\.app"
+_cors_origin_re = re.compile(CORS_ORIGIN_REGEX)
+
+
+def allowed_origin(origin: str | None) -> str | None:
+    """The Origin to echo back, or None if this site may not call the API."""
+    if not origin:
+        return None
+    if origin in CORS_ORIGINS or _cors_origin_re.fullmatch(origin):
+        return origin
+    return None
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173",
-                   *[o.strip() for o in os.getenv("DHARRAKSHAK_CORS_ORIGINS", "").split(",") if o.strip()]],
-    allow_origin_regex=r"https://[a-z0-9-]+\.vercel\.app",
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -139,11 +159,22 @@ async def unhandled_error(request: Request, err: Exception) -> JSONResponse:
 
     Keeps every failure as JSON (the frontend reads `detail`) and never sends
     a stack trace or internal state to the browser.
+
+    Starlette's own ServerErrorMiddleware runs OUTSIDE CORSMiddleware, so a
+    response raised from here would reach the browser without an
+    Access-Control-Allow-Origin header — the fetch would then look like a
+    network failure and the frontend could not read `detail`. The header is
+    therefore added here as well, using the same allow-list.
     """
     log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    headers = {}
+    origin = allowed_origin(request.headers.get("origin"))
+    if origin:
+        headers = {"Access-Control-Allow-Origin": origin, "Vary": "Origin"}
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Something went wrong on the server. Please try again."},
+        headers=headers,
     )
 
 
@@ -160,6 +191,27 @@ def _require_crop(crop_id: str) -> CropProfile:
     if crop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Crop '{crop_id}' not found")
     return crop
+
+
+def _rate_limit(request: Request, bucket: str) -> None:
+    """Count this call against the bucket's per-client and global limits.
+
+    The three expensive routes (analyze, chat, transcribe) are reachable by
+    anyone, and two of them spend Groq credits, so each caller gets a budget
+    per minute. See backend/services/ratelimit.py.
+    """
+    client = ratelimit.client_key(
+        request.client.host if request.client else None,
+        request.headers.get("x-forwarded-for"),
+    )
+    try:
+        ratelimit.check(bucket, client)
+    except ratelimit.RateLimited as err:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many requests. Please wait a moment and try again.",
+            headers={"Retry-After": str(max(1, int(err.retry_after + 0.5)))},
+        ) from err
 
 
 # ---------------------------------------------------------------------------
@@ -255,9 +307,14 @@ def crop_weather(crop_id: str) -> Weather:
 # ---------------------------------------------------------------------------
 
 @router.post("/crops/{crop_id}/analyze", response_model=AnalysisResult, tags=["analysis"])
-async def analyze(crop_id: str, image: UploadFile = File(..., description="Leaf photo (JPEG/PNG/WebP)")) -> AnalysisResult:
+async def analyze(
+    crop_id: str,
+    request: Request,
+    image: UploadFile = File(..., description="Leaf photo (JPEG/PNG/WebP)"),
+) -> AnalysisResult:
     """Upload a leaf photo and get predictions, real weather, a risk estimate,
     ranked action cards and a "Why?" explanation."""
+    _rate_limit(request, "analyze")
     crop = _require_crop(crop_id)
 
     if image.content_type not in ALLOWED_IMAGE_TYPES:
@@ -323,12 +380,13 @@ def update_document(crop_id: str, code: str, update: DocumentUpdate) -> LoanSumm
 # ---------------------------------------------------------------------------
 
 @router.post("/chat", response_model=ChatReply, tags=["chat"])
-def chat(request: ChatRequest) -> ChatReply:
-    """Ask a question about the crop or loan, in English or Hindi. The answer
-    is grounded in this farmer's saved data. If the LLM is unavailable, a
-    saved demo answer is returned with `is_fallback: true`."""
-    crop = _require_crop(request.crop_id)
-    return chat_service.answer(request, crop)
+def chat(request: Request, body: ChatRequest) -> ChatReply:
+    """Ask a question about the crop or loan, in any supported language. The
+    answer is grounded in this farmer's saved data. If the LLM is unavailable,
+    a saved demo answer is returned with `is_fallback: true`."""
+    _rate_limit(request, "chat")
+    crop = _require_crop(body.crop_id)
+    return chat_service.answer(body, crop)
 
 
 # ---------------------------------------------------------------------------
@@ -347,12 +405,14 @@ STT_LANGUAGES = {"en", "hi", "mr", "pa"}
 
 @router.post("/voice/transcribe", response_model=VoiceTranscript, tags=["chat"])
 async def transcribe(
+    request: Request,
     audio: UploadFile = File(..., description="Recorded question (webm/ogg/wav/mp3/m4a)"),
     lang: str = Form("hi", description="Expected language: en, hi, mr or pa (use 'hi' for Haryanvi/Bhojpuri)"),
 ) -> VoiceTranscript:
     """Speech-to-text for the voice assistant (Groq Whisper). The frontend
     sends the text to /api/chat and reads the reply aloud with the browser's
     built-in voice."""
+    _rate_limit(request, "transcribe")
     content_type = (audio.content_type or "").split(";")[0].strip()
     if content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"Unsupported audio type: {content_type or 'unknown'}")
