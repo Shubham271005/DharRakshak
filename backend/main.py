@@ -30,13 +30,15 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from backend import config  # noqa: F401  (loads .env before anything reads keys)
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend import repository
 from backend.db import init_db
@@ -84,6 +86,40 @@ app = FastAPI(
     "Loan data is MOCK — there is no bank integration.",
 )
 
+# Routes that accept an uploaded file, with the largest body they may accept.
+# Checked from Content-Length BEFORE the body is read: without this the whole
+# upload is buffered before the endpoint can reject it, which lets a client
+# fill the disk with a single oversized request.
+_UPLOAD_LIMITS = (
+    (re.compile(r"^/api/crops/[^/]+/analyze$"), 8 * 1024 * 1024),
+    (re.compile(r"^/api/voice/transcribe$"), 10 * 1024 * 1024),
+)
+# Room for the multipart boundaries and part headers around the file itself.
+_MULTIPART_OVERHEAD = 64 * 1024
+
+
+@app.middleware("http")
+async def reject_oversized_uploads(request: Request, call_next):
+    """Refuse an oversized upload before it is buffered into memory or disk.
+
+    Registered before CORSMiddleware on purpose, so CORS ends up outermost and
+    the browser can still read this 413. Requests without a Content-Length
+    (chunked uploads) fall through to the per-endpoint size check.
+    """
+    if request.method == "POST":
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit():
+            size = int(declared)
+            for pattern, limit in _UPLOAD_LIMITS:
+                if pattern.match(request.url.path) and size > limit + _MULTIPART_OVERHEAD:
+                    return JSONResponse(
+                        status_code=413,  # plain int: the named constant is
+                        # deprecated in newer Starlette and absent in older ones.
+                        content={"detail": "The uploaded file is too large."},
+                    )
+    return await call_next(request)
+
+
 # Which websites may call this API from the browser: the local dev server,
 # any Vercel deployment (*.vercel.app), plus extra origins listed in
 # DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
@@ -95,6 +131,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_error(request: Request, err: Exception) -> JSONResponse:
+    """Last-resort handler: log the reason, return a generic message.
+
+    Keeps every failure as JSON (the frontend reads `detail`) and never sends
+    a stack trace or internal state to the browser.
+    """
+    log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Something went wrong on the server. Please try again."},
+    )
+
 
 router = APIRouter(prefix="/api")
 
@@ -205,9 +256,8 @@ def crop_weather(crop_id: str) -> Weather:
 
 @router.post("/crops/{crop_id}/analyze", response_model=AnalysisResult, tags=["analysis"])
 async def analyze(crop_id: str, image: UploadFile = File(..., description="Leaf photo (JPEG/PNG/WebP)")) -> AnalysisResult:
-    """Upload a leaf photo and get predictions, risk, action cards and an
-    explanation. Predictions (C4) and weather (C5) are real; risk, cards and
-    explanation are still placeholders (Component 6)."""
+    """Upload a leaf photo and get predictions, real weather, a risk estimate,
+    ranked action cards and a "Why?" explanation."""
     crop = _require_crop(crop_id)
 
     if image.content_type not in ALLOWED_IMAGE_TYPES:
