@@ -21,14 +21,22 @@ the Pydantic models in shared/contract.py. Routes never write SQL.
 
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+log = logging.getLogger("dharrakshak.db")
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = REPO_ROOT / "data" / "dharrakshak.sqlite3"
+
+# Wait this long for another writer before giving up, instead of raising
+# "database is locked". Two analyses saved at the same moment, or a startup
+# seed racing a request, then simply take turns.
+BUSY_TIMEOUT_SECONDS = 10.0
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS farmers (
@@ -110,7 +118,7 @@ def connect() -> Iterator[sqlite3.Connection]:
     """
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=BUSY_TIMEOUT_SECONDS)
     conn.row_factory = sqlite3.Row          # rows behave like dicts: row["crop_id"]
     conn.execute("PRAGMA foreign_keys = ON")  # SQLite needs this per connection
     try:
@@ -126,4 +134,11 @@ def connect() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     """Create any missing tables. Safe to call on every startup."""
     with connect() as conn:
+        # WAL lets a reader (e.g. GET /crops) run while an analysis is being
+        # saved, instead of both queuing on one lock. It is a property of the
+        # database file, so setting it once here covers every later connection.
+        try:
+            conn.execute("PRAGMA journal_mode = WAL")
+        except sqlite3.OperationalError:  # e.g. a filesystem without WAL support
+            log.warning("Could not enable WAL mode; continuing with the default journal.")
         conn.executescript(SCHEMA)

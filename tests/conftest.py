@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.ml import classifier as clf
-from backend.services import geocoding, llm, weather
+from backend.services import geocoding, llm, ratelimit, weather
 from shared.contract import Prediction
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -123,6 +123,17 @@ class FakeOpenMeteo:
         if self.down:
             raise geocoding.GeocodingUnavailable("simulated outage")
         return KNOWN_PLACES.get(geocoding._normalise(name), [])
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Every test starts with a full rate-limit budget. The limiter is
+    process-wide and keys on the client address, which is the same
+    ("testclient") for every test, so without this the suite would exhaust
+    the budget partway through."""
+    ratelimit.reset()
+    yield
+    ratelimit.reset()
 
 
 @pytest.fixture(autouse=True)

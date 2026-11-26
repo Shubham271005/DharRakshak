@@ -14,8 +14,9 @@ Loan schemes come from shared/content/schemes.json (by loan type).
 from __future__ import annotations
 
 import json
+import logging
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 from backend.db import connect
 from backend.engines.content import load
@@ -38,6 +39,22 @@ from shared.contract import (
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+log = logging.getLogger("dharrakshak.repository")
+
+
+def _utc_iso(value: datetime) -> str:
+    """Timestamps are STORED in UTC so that ordering them as text is the same
+    as ordering them in time.
+
+    The seed analysis carries +05:30 (sample_data.json) while new analyses
+    carry +00:00. Comparing those as strings is wrong: 11:00 IST sorts before
+    10:00 IST once written as "...T05:30+00:00" and "...T10:00+05:30".
+    """
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -139,13 +156,19 @@ def list_crops() -> list[CropListItem]:
         item = CropListItem(profile=_row_to_crop(row))
         s = stats.get(row["crop_id"])
         if s:
-            latest = AnalysisResult.model_validate_json(s["latest_json"])
-            item = item.model_copy(update={
-                "checks": s["checks"],
-                "latest_check_at": latest.created_at,
-                "latest_risk": latest.risk.level,
-                "latest_prediction": latest.predictions[0].display_name,
-            })
+            try:
+                latest = AnalysisResult.model_validate_json(s["latest_json"])
+            except ValueError as err:
+                # One unreadable saved analysis must not break the whole list.
+                log.warning("Skipping unreadable latest analysis for %s: %s", row["crop_id"], err)
+                latest = None
+            if latest is not None:
+                item = item.model_copy(update={
+                    "checks": s["checks"],
+                    "latest_check_at": latest.created_at,
+                    "latest_risk": latest.risk.level,
+                    "latest_prediction": latest.predictions[0].display_name,
+                })
         items.append(item)
     return items
 
@@ -180,7 +203,7 @@ def save_analysis(result: AnalysisResult) -> AnalysisResult:
         conn.execute(
             """INSERT INTO analyses (analysis_id, crop_id, created_at, top_label, risk_level, is_demo, result_json)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (result.analysis_id, result.crop_id, result.created_at.isoformat(),
+            (result.analysis_id, result.crop_id, _utc_iso(result.created_at),
              result.predictions[0].label, result.risk.level.value, int(result.is_demo),
              result.model_dump_json()),
         )
@@ -194,7 +217,14 @@ def list_analyses(crop_id: str, limit: int = 50) -> list[AnalysisResult]:
             "SELECT result_json FROM analyses WHERE crop_id = ? ORDER BY created_at DESC LIMIT ?",
             (crop_id, limit),
         ).fetchall()
-    return [AnalysisResult.model_validate_json(r["result_json"]) for r in rows]
+    results = []
+    for r in rows:
+        try:
+            results.append(AnalysisResult.model_validate_json(r["result_json"]))
+        except ValueError as err:
+            # Skip a corrupt row rather than failing the crop's whole history.
+            log.warning("Skipping unreadable analysis for %s: %s", crop_id, err)
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -277,20 +307,32 @@ DEMO_FARMER_ID = "farmer-demo-001"
 def seed_demo_if_empty() -> bool:
     """Insert the demo farmer, crop, analysis and MOCK loan from
     shared/sample_data.json if the database has no crops yet.
-    Returns True if it seeded. Safe to call on every startup."""
+
+    Returns True if it seeded. Safe to call on every startup — including when
+    several worker processes start at the same instant. The whole seed runs in
+    ONE transaction and every insert is OR IGNORE, so a worker that loses the
+    race changes nothing instead of crashing with a UNIQUE violation (which,
+    raised from lifespan, would kill that worker before it served a request).
+    """
+    demo = sample()
+    p = demo.crop_profile
+    ls = demo.loan_summary
+    loan = ls.loan
+    # Checklist from shared/content/loan_documents.json; which ones are
+    # already submitted comes from the sample (land record + photo missing).
+    submitted = {d.code: d.submitted for d in ls.documents}
+    checklist = load("loan_documents")[loan.loan_type]
+    analysis = demo.analysis
+
     with connect() as conn:
         if conn.execute("SELECT 1 FROM crops LIMIT 1").fetchone():
             return False
-
-    demo = sample()
-    p = demo.crop_profile
-    with connect() as conn:
         conn.execute(
-            "INSERT INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
+            "INSERT OR IGNORE INTO farmers (farmer_id, name, preferred_language) VALUES (?, ?, ?)",
             (DEMO_FARMER_ID, p.farmer_name, p.preferred_language),
         )
-        conn.execute(
-            """INSERT INTO crops (crop_id, farmer_id, crop_type, variety, sowing_date, area_acres,
+        seeded = conn.execute(
+            """INSERT OR IGNORE INTO crops (crop_id, farmer_id, crop_type, variety, sowing_date, area_acres,
                                   location_name, latitude, longitude, stage,
                                   expected_harvest_start, expected_harvest_end, yield_min_kg, yield_max_kg)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -299,11 +341,9 @@ def seed_demo_if_empty() -> bool:
              p.expected_harvest_start and p.expected_harvest_start.isoformat(),
              p.expected_harvest_end and p.expected_harvest_end.isoformat(),
              p.yield_estimate and p.yield_estimate.min_kg, p.yield_estimate and p.yield_estimate.max_kg),
-        )
-        ls = demo.loan_summary
-        loan = ls.loan
+        ).rowcount
         conn.execute(
-            """INSERT INTO loans (loan_id, farmer_id, loan_type, display_name_json, lender_name, status,
+            """INSERT OR IGNORE INTO loans (loan_id, farmer_id, loan_type, display_name_json, lender_name, status,
                                   sanctioned_amount_inr, outstanding_amount_inr,
                                   next_due_date, next_due_amount_inr, data_source)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -312,14 +352,18 @@ def seed_demo_if_empty() -> bool:
              loan.next_repayment and loan.next_repayment.due_date.isoformat(),
              loan.next_repayment and loan.next_repayment.amount_inr, ls.data_source),
         )
-        # Checklist from shared/content/loan_documents.json; which ones are
-        # already submitted comes from the sample (land record + photo missing).
-        submitted = {d.code: d.submitted for d in ls.documents}
-        checklist = load("loan_documents")[loan.loan_type]
         conn.executemany(
-            "INSERT INTO loan_documents (loan_id, code, name_json, submitted, position) VALUES (?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO loan_documents (loan_id, code, name_json, submitted, position) VALUES (?, ?, ?, ?, ?)",
             [(loan.loan_id, d["code"], LocalizedText(**d["name"]).model_dump_json(), int(submitted.get(d["code"], False)), i)
              for i, d in enumerate(checklist)],
         )
-    save_analysis(demo.analysis)
-    return True
+        conn.execute(
+            """INSERT OR IGNORE INTO analyses (analysis_id, crop_id, created_at, top_label, risk_level, is_demo, result_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (analysis.analysis_id, analysis.crop_id, _utc_iso(analysis.created_at),
+             analysis.predictions[0].label, analysis.risk.level.value, int(analysis.is_demo),
+             analysis.model_dump_json()),
+        )
+    if not seeded:
+        log.info("Demo data was already seeded by another worker.")
+    return bool(seeded)
