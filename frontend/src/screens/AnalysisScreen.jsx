@@ -33,6 +33,10 @@ function UploadPanel({ onResult, cropId }) {
     setError(null)
     if (picked && picked.size > MAX_UPLOAD_MB * 1024 * 1024) {
       setError(new Error(t('photo_too_large')))
+      // Drop any previously chosen photo, so the button can't analyze the
+      // wrong leaf, and clear the input so the same file can be re-picked.
+      setFile(null)
+      e.target.value = ''
       return
     }
     setFile(picked ?? null)

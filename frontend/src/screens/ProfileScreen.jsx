@@ -52,7 +52,7 @@ function WeatherCard({ cropId }) {
   const { data: w, loading, error } = useApiData(() => getWeather(cropId), [cropId])
   return (
     <Card title={t('weather_title')} icon={CloudRain} action={w?.source === 'mock' ? <MockTag /> : null}>
-      {loading && <Loading />}
+      {loading && !w && <Loading />}
       {error && <p className="text-sm text-muted">{t('weather_unavailable')}</p>}
       {w && (
         <>

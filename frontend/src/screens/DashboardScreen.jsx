@@ -18,7 +18,7 @@ const QUICK_QUESTIONS = ['quick_q_risk', 'quick_q_today', 'quick_q_documents']
 
 function LatestCheck({ cropId, onNavigate }) {
   const { lang, t, tr } = useLanguage()
-  const { data: a, loading, error } = useApiData(() => getLatestAnalysis(cropId), [cropId])
+  const { data: a, loading, error, reload } = useApiData(() => getLatestAnalysis(cropId), [cropId])
   return (
     <Card
       title={t('latest_check_title')}
@@ -26,8 +26,8 @@ function LatestCheck({ cropId, onNavigate }) {
       action={<Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => onNavigate('analysis')}>{t('view_details')} <ArrowRight className="h-3.5 w-3.5" /></Button>}
       className="lg:col-span-2"
     >
-      {loading && <Loading />}
-      {error && <ErrorBox error={error} />}
+      {loading && !a && <Loading />}
+      {error && <ErrorBox error={error} onRetry={reload} />}
       {!loading && !error && !a && (
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm text-muted">{t('no_analysis_yet')}</p>
@@ -69,7 +69,7 @@ function WeatherCard({ cropId }) {
   const { data: w, loading, error } = useApiData(() => getWeather(cropId), [cropId])
   return (
     <Card title={t('weather_title')} icon={CloudRain} action={w?.source === 'mock' ? <MockTag /> : null}>
-      {loading && <Loading />}
+      {loading && !w && <Loading />}
       {error && <p className="text-sm text-muted">{t('weather_unavailable')}</p>}
       {w && (
         <>
@@ -109,10 +109,13 @@ function LoanCard({ cropId, onNavigate }) {
   const { lang, t, tr } = useLanguage()
   const { data: loan, loading, error } = useApiData(() => getLoanSummary(cropId), [cropId])
   const done = loan ? loan.documents.filter((d) => d.submitted).length : 0
+  const total = loan ? loan.documents.length : 0
+  // An empty checklist must not turn the bar into NaN%.
+  const progress = total > 0 ? done / total : 0
   return (
     <Card title={t('loan_card_title')} icon={FileCheck2} className="lg:col-span-1 xl:col-span-2"
       action={<Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => onNavigate('finance')}>{t('view_details')}</Button>}>
-      {loading && <Loading />}
+      {loading && !loan && <Loading />}
       {error?.status === 404 && <p className="text-sm text-muted">{t('no_loan_yet')}</p>}
       {error && error.status !== 404 && <ErrorBox error={error} />}
       {loan && (
@@ -125,7 +128,7 @@ function LoanCard({ cropId, onNavigate }) {
             <span className="font-semibold">{t('documents_progress').replace('{done}', done).replace('{total}', loan.documents.length)}</span>
             {loan.missing_document_codes.length > 0 && <span className="font-semibold text-rust">{t('docs_missing_count').replace('{count}', loan.missing_document_codes.length)}</span>}
           </div>
-          <ProgressBar value={done / loan.documents.length} />
+          <ProgressBar value={progress} />
           <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-3">
             <div className="hidden xl:block"><Stat label={t('sanctioned')} value={formatINR(loan.loan.sanctioned_amount_inr)} /></div>
             <Stat label={t('outstanding')} value={formatINR(loan.loan.outstanding_amount_inr)} />

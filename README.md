@@ -1,5 +1,4 @@
-# DharRakshak — Team Dynaminds (HackShift)
-A prototype for hackathon
+# DharRakshak — Team Dynaminds 
 
 *From crop symptoms to smarter farming decisions.*
 

@@ -179,6 +179,8 @@ function DocumentsCard({ summary, cropId, onUpdate }) {
   const documents = summary.documents.map((d) => (d.code in pending ? { ...d, submitted: pending[d.code] } : d))
   const done = documents.filter((d) => d.submitted).length
   const total = documents.length
+  // A loan with an empty checklist must not turn the bar into NaN%.
+  const progress = total > 0 ? done / total : 0
 
   async function toggle(doc) {
     const next = !doc.submitted
@@ -202,9 +204,9 @@ function DocumentsCard({ summary, cropId, onUpdate }) {
     <Card title={t('documents_title')} icon={FileCheck2}>
       <div className="mb-1.5 flex justify-between text-sm">
         <span className="font-semibold text-forest">{t('documents_progress').replace('{done}', done).replace('{total}', total)}</span>
-        <span className="text-xs text-muted">{Math.round((done / total) * 100)}%</span>
+        <span className="text-xs text-muted">{Math.round(progress * 100)}%</span>
       </div>
-      <ProgressBar value={done / total} label={t('documents_title')} />
+      <ProgressBar value={progress} label={t('documents_title')} />
       <ul className="mt-3 space-y-1">
         {documents.map((doc) => (
           <li key={doc.code}>
