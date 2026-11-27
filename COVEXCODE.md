@@ -12,7 +12,7 @@ python3 -m venv .venv
 .venv/bin/python -m pytest -q
 ```
 
-Baseline after the audit + test phases: **893 passed, 1 skipped**.
+Baseline after the audit + test phases: **904 passed, 1 skipped**.
 `tests/test_classifier.py` skips because torch is absent — that is expected, not a failure.
 
 Frontend has no test suite. Verify JSX changes with:
@@ -51,11 +51,16 @@ real_chat_complete = llm.chat_complete       # captured before the fake_llm fixt
 **93%**. The uncovered remainder is `backend/ml/models.py` (torch/onnxruntime session code), which
 cannot run without those packages. `.coveragerc` excludes the runtime `import torch` lines.
 
-## Known pre-existing bug (not yet fixed)
+## Scripts: `download_model.py` and `run_demo.sh` (fixed)
 
-`scripts/download_model.py` and `scripts/run_demo.sh` still assume the legacy
-`.pth` weights, but `backend/ml/classifier.py` sets `DEFAULT_MODEL = "daksh-mobilenetv2"`,
-a `legacy` entry with **no `repo` key**. So `download_model.py` without `--all`
-raises `ModelNotAvailable`/`KeyError`, and `run_demo.sh` looks for a
-`mobilenetv2_plant.pth` that no longer exists. The committed `.onnx` is what the
-app actually loads, so a fresh clone runs without downloading anything.
+These two used to be the one known broken path. `DEFAULT_MODEL` is `daksh-mobilenetv2`, a `legacy`
+entry with **no `repo` key**, so `download_model.py` without `--all` raised `KeyError: 'repo'`, and
+`run_demo.sh` looked for a `mobilenetv2_plant.pth` that no longer exists (the committed weights are
+`mobilenetv2_plant.onnx`). Because `run_demo.sh` runs under `set -euo pipefail`, that aborted the
+one-command demo on a clean clone.
+
+Both are fixed: the script reports that the legacy model needs no download, names the committed
+`.onnx`, and exits 0; the shell script accepts either extension and only downloads when neither
+file is present. `tests/test_scripts_and_guards.py` guards this — **do not** reintroduce an
+unconditional `spec["repo"]` lookup in `download_model.py`, because `--all` skips legacy entries but
+the no-argument path does not.

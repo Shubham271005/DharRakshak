@@ -9,21 +9,16 @@ Then open http://localhost:8000/docs to try every endpoint in the browser.
 All routes live under /api so the React dev server can forward /api/* to
 this server (see frontend/vite.config.js) without CORS problems.
 
-Every response uses a model from shared/contract.py (`response_model=`),
-so FastAPI refuses to send anything that doesn't match the contract.
+Every response body is a model from shared/contract.py via `response_model=`
+(the one exception is the small `/api/health` dict), so FastAPI refuses to
+send anything that doesn't match the contract.
 
-What's real vs. placeholder so far:
-- Real: routing, input validation, upload checks, error codes, contract
-  enforcement, CORS, and SQLite storage (crops, analyses, loans survive
-  restarts). On first start the demo farmer is seeded automatically.
-- Real (C4): the uploaded photo is classified by the pretrained
-  MobileNetV2 model (top-3 predictions, uncertainty, crop mismatch).
-- Real (C5): crop locations are geocoded with Open-Meteo (or taken from the
-  phone's GPS), and each analysis includes real recent + forecast weather.
-- Real (C6): risk, action cards and explanation from transparent rules.
-- Real (C7): loan document checklist you can tick off (loan data is MOCK).
-- Real (C9): grounded multilingual chatbot (Groq LLM) and voice input
-  (Groq Whisper). Falls back to saved answers if Groq is unavailable.
+Completeness: every feature this module serves (routing, validation, upload
+checks, error codes, contract enforcement, CORS, rate limiting, SQLite
+storage, image model, weather, rule engines, loans, chat and voice) is
+implemented — nothing in the request path is a placeholder. The only mock
+data is the loan records, which is labelled as such in the API
+(`data_source: "mock"`) and in the UI.
 """
 
 from __future__ import annotations
@@ -123,12 +118,8 @@ async def reject_oversized_uploads(request: Request, call_next):
 # Which websites may call this API from the browser: the local dev server,
 # any Vercel deployment (*.vercel.app), plus extra origins listed in
 # DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
-# (Configured above, next to the catch-all handler that also needs it.)
-
-
-# Which websites may call this API from the browser: the local dev server,
-# any Vercel deployment (*.vercel.app), plus extra origins listed in
-# DHARRAKSHAK_CORS_ORIGINS (comma-separated, e.g. a custom domain).
+# `allowed_origin()` is reused by the catch-all handler below, which has to add
+# the header itself (see its docstring).
 CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173",
                 *[o.strip() for o in os.getenv("DHARRAKSHAK_CORS_ORIGINS", "").split(",") if o.strip()]]
 CORS_ORIGIN_REGEX = r"https://[a-z0-9-]+\.vercel\.app"
@@ -220,12 +211,12 @@ def _rate_limit(request: Request, bucket: str) -> None:
 
 @router.get("/health", tags=["system"])
 def health() -> dict:
-    """Quick check that the server is running. `stage` tells you which
-    roadmap component the backend is at; `model` whether the image model is
+    """Quick check that the server is running. `stage` is the most recent
+    completed ROADMAP milestone; `model` says whether the image model is
     loaded ("loaded") or will load on the first analysis ("not_loaded")."""
     return {
         "status": "ok",
-        "stage": "component-9-chat-voice",
+        "stage": "upgrade-1-field-accuracy",
         "model": "loaded" if clf.is_loaded() else "not_loaded",
         "chat": "configured" if config.groq_api_key() else "no_api_key",
     }
@@ -326,7 +317,10 @@ async def analyze(
     if not data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The uploaded file is empty.")
     if len(data) > MAX_IMAGE_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Photo is larger than 8 MB.")
+        # Plain 413 rather than a named constant: the old name
+        # (HTTP_413_REQUEST_ENTITY_TOO_LARGE) is deprecated in newer
+        # Starlette and its replacement is absent in older ones.
+        raise HTTPException(413, "Photo is larger than 8 MB.")
 
     try:
         classifier = await run_in_threadpool(clf.get_classifier)
@@ -420,7 +414,7 @@ async def transcribe(
     if not data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The recording is empty.")
     if len(data) > MAX_AUDIO_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Recording is too long.")
+        raise HTTPException(413, "Recording is too long.")
     try:
         text = await run_in_threadpool(llm.transcribe, data, audio.filename or "question.webm", content_type, lang)
     except llm.LLMUnavailable as err:

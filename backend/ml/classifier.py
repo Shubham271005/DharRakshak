@@ -5,13 +5,17 @@ WHY THIS CHANGED: on 89 real field photos (PlantDoc), the original model
 (Daksh159 MobileNetV2) got only 12% top-1 — it ranked all 38 classes and
 often answered with a different crop entirely. Measured with
 scripts/eval_pipeline.py (details: docs/MODEL_CARD.md), the setup below
-reaches 62% top-1 / 85% top-3 on the same photos:
+scores far better while still ranking all 38 classes: 29% top-1 / 43% top-3
+with linkanjarad, and 12% / 26% with the default committed model. (Scoring
+restricted to the registered crop reaches 60% / 85%, but the app deliberately
+does NOT do that — see point 4, and the honesty note in docs/MODEL_CARD.md.)
 
   1. Model: linkanjarad MobileNetV2 (best real-world accuracy of the 4
      models tested; same size/speed class). Choose another with
      DHARRAKSHAK_MODEL in .env — see MODELS below.
   2. Preprocessing (backend/ml/preprocess.py): EXIF rotation + quality
-     checks (blur, dark, blank, tiny). Leaf crop / CLAHE / white balance /
+     checks (blur, dark, blank, tiny) + leaf crop (which falls back to the
+     full frame when no plausible leaf is found). CLAHE / white balance /
      denoise exist but are OFF: they did not help real-world accuracy.
   3. Flip test-time augmentation: average the photo and its mirror image.
   4. Ranking: all 38 classes are ranked and the top 3 are shown with the
@@ -152,11 +156,11 @@ def crop_name(crop: str) -> dict[str, dict[str, str]]:
 
 @dataclass(frozen=True)
 class ClassifierOutput:
-    predictions: list[Prediction]        # top-3 (within the registered crop if known), highest first
+    predictions: list[Prediction]        # top-3 across ALL 38 classes, highest first
     top: ClassInfo                       # details of the top-1 class
     uncertain: bool
     uncertainty_message: LocalizedText | None
-    crop_mismatch: bool = False          # photo puts almost no weight on the registered crop
+    crop_mismatch: bool = False          # the winning class belongs to a different crop
     registered_crop_mass: float | None = None
     quality_issues: tuple[str, ...] = ()
 

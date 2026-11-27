@@ -17,8 +17,13 @@ WEB_PORT="${WEB_PORT:-5173}"
 if [ ! -x .venv/bin/uvicorn ]; then
   echo "✗ Python environment not set up. See README.md → 'First-time setup'."; exit 1
 fi
-if [ ! -f models/plant-disease-mobilenetv2/mobilenetv2_plant.pth ]; then
-  echo "• Image model weights missing — downloading (~9 MB)…"
+# The committed weights are the ONNX export (.onnx); older checkouts had a
+# .pth here. Accept either, and only try to download when NEITHER is present —
+# the default model is the legacy one, which download_model.py cannot fetch.
+if [ ! -f models/plant-disease-mobilenetv2/mobilenetv2_plant.onnx ] \
+   && [ ! -f models/plant-disease-mobilenetv2/mobilenetv2_plant.pth ]; then
+  echo "• Image model weights missing — downloading a Hugging Face model (~9 MB)…"
+  echo "  (set DHARRAKSHAK_MODEL to choose which one; see .env.example)"
   .venv/bin/python scripts/download_model.py
 fi
 if [ ! -d frontend/node_modules ]; then

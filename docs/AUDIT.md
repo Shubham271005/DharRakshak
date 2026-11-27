@@ -28,7 +28,7 @@ Severities used below:
 | 7 | One corrupt saved analysis broke the whole "My crops" list | Medium | **Fixed** |
 | 8 | SQLite ran without WAL or a busy timeout ("database is locked") | Medium | **Fixed** |
 | 9 | Classifier docstring and constants described behaviour the code no longer had | Medium | **Fixed** |
-| 10 | `download_model.py` / `run_demo.sh` assume the removed `.pth` weights | Medium | Open (known) |
+| 10 | `download_model.py` / `run_demo.sh` assume the removed `.pth` weights | Medium | **Fixed** |
 | 11 | All crops and loan data are readable by anyone (no accounts) | Medium | Open (by design, documented) |
 | 12 | `preferred_language` is not validated against the supported list | Low | Open |
 | 13 | A corrupt `sowing_date` row turns a read into a `500` | Low | Open |
@@ -233,16 +233,21 @@ observational, not a decision input. **Behaviour is unchanged.**
 
 ---
 
+## Fixed in a later audit pass
+
+### 10. `download_model.py` and `run_demo.sh` assume the removed `.pth` weights *(Medium)* — **fixed**
+
+`DEFAULT_MODEL` is `daksh-mobilenetv2`, a `legacy` entry with no `repo` key, so
+`download_model.py` without `--all` raised a bare `KeyError: 'repo'` before any download was
+attempted, and `run_demo.sh` waited for a `mobilenetv2_plant.pth` that no longer ships. Under
+`set -euo pipefail` that aborted the one-command demo on a fresh clone.
+
+**Fixed:** the script now recognises a `legacy` entry, reports that nothing needs downloading, names
+the committed `.onnx` file, and points at `--all` for the Hugging Face candidates — exiting 0
+instead of crashing. `run_demo.sh` accepts the `.onnx` (or a `.pth`) and only tries to download when
+neither exists. Guarded by `tests/test_scripts_and_guards.py`.
+
 ## Open — recorded, not patched
-
-### 10. `download_model.py` and `run_demo.sh` assume the removed `.pth` weights *(Medium)*
-
-Already documented in `COVEXCODE.md`. `DEFAULT_MODEL` is `daksh-mobilenetv2`, a `legacy` entry
-with no `repo` key, so `download_model.py` without `--all` raises, and `run_demo.sh` looks for a
-`mobilenetv2_plant.pth` that no longer ships. The committed `.onnx` is what the app loads, so a
-fresh clone runs — the scripts are simply stale. **Recommendation:** make `--all` the default, or
-point the scripts at `models/plant-disease-mobilenetv2/mobilenetv2_plant.onnx` and skip downloading
-when it exists.
 
 ### 11. Every crop and loan record is readable by anyone *(Medium)*
 

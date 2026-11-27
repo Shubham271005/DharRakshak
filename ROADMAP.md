@@ -363,6 +363,27 @@ All screens work. Each teammate owns their screen's finishing touches, testing a
   - crops the model knows only one class for are flagged as limited support.
 - New files: `backend/ml/models.py` (backends + strict label mapping), `backend/ml/classifier_labels.py`, `scripts/fetch_field_images.py`, `scripts/eval_pipeline.py`. Tests guard accuracy at ≥90% on lab and ≥55% on field photos.
 
+> **⚠ Correction (later audit).** Several claims in the block above no longer match the code, and
+> some never matched the shipped default. What is true now:
+>
+> - **The default model is `daksh-mobilenetv2`**, not linkanjarad. It is the only model whose
+>   weights are committed (an ONNX export), so a fresh clone needs no download and the free Render
+>   plan needs no PyTorch. linkanjarad and the others are opt-in via `DHARRAKSHAK_MODEL`.
+> - **There is no crop-aware ranking.** `classifier.classify()` ranks all 38 classes and uses the
+>   registered crop only to raise a "may not be your crop" warning. Flip averaging *is* on.
+> - **The "12% → 60% top-1, 81% → 85% top-3" line compares two different ranking methods** and is
+>   not the app's field accuracy. Scored the way the app actually runs (all 38 classes), the numbers
+>   in `data/eval_results.json` are **12% top-1 / 26% top-3** for the default model and **26% / 42%**
+>   for linkanjarad. The 60%/85% figures are the crop-restricted measurement. See
+>   `docs/MODEL_CARD.md`, which now states both.
+> - **The top-2-gap rule and the single-class-crop flag were removed** from `classifier.py`. The only
+>   uncertainty rules are a poor photo or a top-1 probability below 0.50.
+> - **Leaf segmentation is on**, not off (`DEFAULT_STEPS` includes `leaf_crop`); it measured as
+>   accuracy-neutral for the default model.
+> - **The field-accuracy test is skipped.** `tests/test_classifier.py` guards ≥90% on lab photos, but
+>   the ≥55% field guard is `@pytest.mark.skip` (and the whole module skips without torch), and the
+>   evaluation images are git-ignored. So no test enforces field accuracy today.
+
 **UI redesign:**
 - New **Dashboard** home screen.
 - Compact cards and type scale, Lucide icons, a 6-language dropdown, and a bottom tab bar on phones.

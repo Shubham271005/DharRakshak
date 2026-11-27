@@ -1,16 +1,14 @@
 """
-Sample data + temporary placeholders.
+Sample data + the chatbot's saved answers.
 
 Since Component 3, real storage lives in SQLite (backend/db.py and
 backend/repository.py). What's left here is:
 
-- `sample()`: loads shared/sample_data.json. Used to seed the demo farmer,
-  to supply the placeholder weather/risk/cards in backend/pipeline.py until
-  Components 5–6, and scheme notes until Component 7.
+- `sample()`: loads shared/sample_data.json. Used to SEED the demo farmer,
+  crop, analysis and mock loan on first start (repository.seed_demo_if_empty),
+  and by the tests. Nothing in the request path fabricates data from it.
 - `mock_chat_reply(request)`: saved demo answers, used by the real chatbot
   (backend/services/chat.py) as its FALLBACK when Groq is unavailable.
-
-When those components land, the matching function here is deleted.
 """
 
 from __future__ import annotations

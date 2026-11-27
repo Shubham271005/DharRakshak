@@ -1,11 +1,17 @@
 """
 Measure the image model EXACTLY as the app runs it (preprocessing, flip
-averaging, crop-aware ranking, uncertainty rules).
+averaging, all-38-class ranking, uncertainty rules).
+
+Note: `classify()` ranks ALL 38 classes and never filters by the registered
+crop, so the numbers printed here are directly comparable to what a farmer
+sees. (docs/MODEL_CARD.md also reports "crop-restricted" numbers, which come
+from `scripts/eval_pipeline.py` and are higher because they discard
+wrong-crop answers. They are not what this script measures.)
 
 Run from the repository root:
     python scripts/eval_model.py                              # lab + field photos, selected model
     python scripts/eval_model.py --dir data/eval_field
-    DHARRAKSHAK_MODEL=daksh-mobilenetv2 python scripts/eval_model.py   # the original model
+    DHARRAKSHAK_MODEL=daksh-mobilenetv2 python scripts/eval_model.py   # the default model
 
 Each file name starts with its true class index, and the farmer's
 registered crop is taken to be the photo's true crop (as in real use).
@@ -55,10 +61,12 @@ def evaluate(model, folder: Path, show_mistakes: bool) -> None:
             reason = "poor photo"
         elif out.crop_mismatch:
             reason = "may not be registered crop"
-        elif out.uncertain and "only one condition" in out.uncertainty_message.en:
-            reason = "single-class crop (limited)"
         elif out.uncertain:
-            reason = "close top-2 (low confidence)"
+            # The only remaining uncertainty rule: top-1 probability below
+            # classifier.UNCERTAIN_THRESHOLD. (An earlier version also had
+            # "close top-2 gap" and "single-class crop" reasons; both were
+            # removed from classifier.py, so those buckets are gone here too.)
+            reason = f"low confidence (< {clf.UNCERTAIN_THRESHOLD:.2f})"
         else:
             reason = "not flagged"
         stats = by_reason.setdefault(reason, [0, 0])

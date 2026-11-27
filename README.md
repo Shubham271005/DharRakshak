@@ -12,7 +12,7 @@ DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a l
 
 | | Feature | How |
 |---|---|---|
-| F1 | Leaf symptom analysis | MobileNetV2 chosen by evaluation on **real field photos** (60% top-1 / 85% top-3, against 12% before), crop-aware ranking, quality checks, honest uncertainty. See the [model card](docs/MODEL_CARD.md). |
+| F1 | Leaf symptom analysis | MobileNetV2 chosen by evaluation on **real field photos** — it ranks all 38 conditions and shows the top 3 with the model's real probabilities, plus photo-quality checks and honest uncertainty. Field accuracy is genuinely modest; **read [what the accuracy numbers mean](#model-accuracy-what-the-numbers-mean)** before quoting any figure. See the [model card](docs/MODEL_CARD.md). |
 | F2 | Crop profile + action cards | Saved profile, 3 ranked safe next steps |
 | F3 | Context-aware risk | Rules combining the photo, Open-Meteo weather and crop stage → low / moderate / elevated (estimate) |
 | F4 | Explainability | Every point in the risk score has a reason sentence, plus a "verify" line |
@@ -20,11 +20,28 @@ DharRakshak is an AI crop assistant for Indian farmers. A farmer photographs a l
 | F6 | Languages | English, हिंदी, मराठी, ਪੰਜਾਬੀ, हरियाणवी, भोजपुरी everywhere: UI, predictions, risk, cards, explanations, finance, chat. Fixed text is translated into reviewable JSON, and the chatbot answers live in the chosen language. |
 | F7 | Chatbot + voice | Groq LLM grounded in the farmer's data. Push-to-talk: Groq Whisper speech-to-text (en/hi/mr/pa; Haryanvi and Bhojpuri via Hindi), answers read aloud with the device's voice for that language |
 
+## Model accuracy: what the numbers mean
+
+The classifier **ranks all 38 conditions** and shows the top 3 with its real probabilities. It does *not* narrow the choice to the crop you registered — it only warns you with "may not be your crop" when the winner belongs to a different one. That choice is deliberate: filtering by crop made the error rate look far better than it was.
+
+Measured on **89 real PlantDoc field photos** (no candidate model was trained on PlantDoc). The figures below come from the committed `data/eval_results.json`, which scores every photo with **all 38 classes ranked** — the same ranking `classify()` uses — under `exif` + `leaf_crop` preprocessing (what `DEFAULT_STEPS` runs). `classify()` additionally averages the photo and its mirror (flip TTA), which the stored results do not include:
+
+| Model | Field top-1 | Field top-3 | Note |
+|---|---|---|---|
+| `daksh-mobilenetv2` — **the default** | 12% | 26% | Committed ONNX weights; no download, no PyTorch |
+| `linkanjarad-mobilenetv2` | 26% | 42% | Its license is not stated by the author |
+| `dinov2-small` (CC-BY-SA-4.0) | 32% | 57% | Best accuracy; needs `download_model.py` + torch |
+| `convnext-tiny` (Apache-2.0) | 16% | 29% | — |
+
+**Earlier versions of this README quoted 60% top-1 / 85% top-3.** Those figures also appear in `docs/MODEL_CARD.md`, clearly labelled: they were measured by scoring *only the registered crop's classes*, which discards every wrong-crop answer and so inflates accuracy. They are not what the shipped code produces. The honest reading is the table above: on a real field photo the default model gets the top answer right roughly one time in eight, and the right answer is in the top three about a quarter of the time.
+
+That is why the app always shows three possibilities, calls them *possible* conditions rather than a diagnosis, flags uncertainty when its own confidence is below 50%, and asks the farmer to verify with a local expert. Lab accuracy (95% for the default model on PlantVillage-style photos, `global_top1` on 38 lab images) is **not** a real-world number and should not be quoted as one.
+
 ## Tech stack
 
-- **Backend:** Python 3.11+, FastAPI, SQLite, PyTorch (CPU)
+- **Backend:** Python 3.11+, FastAPI, SQLite, **ONNX Runtime** (the committed model needs no PyTorch). PyTorch + `transformers` are only needed for the optional Hugging Face candidates.
 - **Frontend:** React 19, Vite, Tailwind CSS v4
-- **AI:** MobileNetV2 plant-disease classifier via Hugging Face `transformers` + OpenCV preprocessing ([model card](docs/MODEL_CARD.md)), transparent decision rules ([rules](docs/DECISION_RULES.md)), Groq `openai/gpt-oss-120b` (fallback `qwen/qwen3.8-27b`) for chat and translation, `whisper-large-v3` for speech-to-text
+- **AI:** MobileNetV2 plant-disease classifier with OpenCV preprocessing ([model card](docs/MODEL_CARD.md)), transparent decision rules ([rules](docs/DECISION_RULES.md)), Groq `openai/gpt-oss-120b` (fallback `qwen/qwen3.8-27b`) for the chatbot, `whisper-large-v3` for speech-to-text
 - **Data:** Open-Meteo weather and geocoding (free, no key). Loan data is sample data only.
 
 ---
@@ -119,7 +136,7 @@ See [ROADMAP.md](ROADMAP.md) for how the project was built, component by compone
 - Risk is always an *estimate*.
 - Weather is real (Open-Meteo), and shown as unavailable rather than made up.
 - Loan data is **sample data**. There is no bank integration.
-- No pesticide names or doses anywhere. The chatbot refuses, and a filter blocks dose-like replies.
+- No pesticide **doses** anywhere: a filter blocks dose-like replies even if the model produces one. Product **names** are blocked by the system prompt only — the filter cannot catch "use <product>" without a dose.
 
 ## Deploy (free): backend on Render, frontend on Vercel
 

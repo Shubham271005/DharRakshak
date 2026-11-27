@@ -5,7 +5,8 @@ source files named in each section — not from the pitch, and not from other do
 existing document disagrees with the code, the code wins; those disagreements are listed in
 [Appendix: where docs and code differ](#appendix-where-docs-and-code-differ).
 
-Verified against commit `3d6702f`.
+Verified against the working tree at commit `6ff38b7`, plus the local (uncommitted) fixes recorded
+in `docs/AUDIT.md` — notably the corrected accuracy claims and the repaired download/demo scripts.
 
 ## Contents
 
@@ -37,8 +38,10 @@ Verified against commit `3d6702f`.
 | Shared contract | Pydantic models — the single source of truth | `shared/contract.py` |
 
 The rule that holds the design together: **the backend never returns a payload that does not
-match `shared/contract.py`**, because every route declares `response_model=`. The frontend never
-invents its own data shapes; `frontend/src/api/client.js` is the only module that talks to the API.
+match `shared/contract.py`**. 11 of the 12 routes enforce this with `response_model=`; the twelfth,
+`GET /api/health`, returns a small hand-built dict (and is the only route without a response model).
+The frontend never invents its own data shapes; `frontend/src/api/client.js` is the only module that
+talks to the API.
 
 ## 2. Repository layout
 
@@ -54,7 +57,7 @@ invents its own data shapes; `frontend/src/api/client.js` is the only module tha
 | `backend/ml/preprocess.py` | EXIF fix, quality checks, leaf segmentation (OpenCV) |
 | `backend/ml/classifier_labels.py` | The 38 `ClassInfo` entries |
 | `backend/engines/` | `facts.py`, `risk.py`, `actions.py`, `explain.py`, `content.py` |
-| `backend/services/` | `weather.py`, `geocoding.py`, `llm.py`, `chat.py` |
+| `backend/services/` | `weather.py`, `geocoding.py`, `llm.py`, `chat.py`, `ratelimit.py` |
 | `shared/contract.py` | Pydantic models + language constants |
 | `shared/content/` | Rules and farmer-facing text as JSON |
 | `shared/i18n/` | UI labels, one file per language |
@@ -107,12 +110,21 @@ sample JSON directly.
 | GET | `/crops/{crop_id}` | One crop | 404 |
 | PUT | `/crops/{crop_id}` | Edit a crop, same ID, history kept | 404, 422 |
 | GET | `/crops/{crop_id}/weather` | Real weather | 404, 503 weather down |
-| POST | `/crops/{crop_id}/analyze` | Upload a leaf photo → analysis | 400, 404, 413, 415, 503 |
+| POST | `/crops/{crop_id}/analyze` | Upload a leaf photo → analysis | 400, 404, 413, 415, **429**, 503 |
 | GET | `/crops/{crop_id}/history` | Analyses, newest first | 404 |
 | GET | `/crops/{crop_id}/loan` | Mock loan summary | 404 (crop or no loan) |
 | PUT | `/crops/{crop_id}/loan/documents/{code}` | Tick/untick a document | 404 |
-| POST | `/chat` | Grounded chatbot reply | 404 |
-| POST | `/voice/transcribe` | Speech → text | 400, 413, 415, 422, 503 |
+| POST | `/chat` | Grounded chatbot reply | 404, **429** |
+| POST | `/voice/transcribe` | Speech → text | 400, 413, 415, 422, **429**, 503 |
+
+### Rate limiting
+
+`backend/services/ratelimit.py` protects the three expensive routes — `/analyze`, `/chat` and
+`/voice/transcribe` — because they are reachable by anyone and two of them spend Groq credits. Each
+caller has a separate budget for each bucket; exceeding it returns **429** with a `Retry-After`
+header (`main.py → _rate_limit`). The client is identified by `x-forwarded-for` when present,
+otherwise the peer address, so a proxy in front of the app does not merge every caller into one
+bucket. Set `DHARRAKSHAK_RATE_LIMIT=0` to disable the limiter (local load testing only).
 
 ### The app shell
 
@@ -178,9 +190,9 @@ within a crop, because rescaling made single-class crops always report 100%.
   (The constant's own comment calls this the no-crop path, but `classify()` applies it the same
   way whether or not a crop is registered.)
 
-> Note: `MARGIN_THRESHOLD = 0.30` is declared in `classifier.py` but not read by any code path.
-> The gap-based rule described in `docs/MODEL_CARD.md` is therefore not what the running code
-> does — see the appendix.
+> Note: the gap-based uncertainty rule that `docs/MODEL_CARD.md` used to describe does not exist.
+> `MARGIN_THRESHOLD` was removed from `classifier.py` (AUDIT finding 9); the live rules are the two
+> above. The model card has been corrected to match.
 
 ### The model registry
 
@@ -454,27 +466,37 @@ the farmer is never told a canned answer is live model output.
 | `DHARRAKSHAK_DB` | `data/dharrakshak.sqlite3` | Database file |
 | `DHARRAKSHAK_PRELOAD_MODEL` | `1` | `0` skips loading the model at startup (tests do this) |
 | `DHARRAKSHAK_CORS_ORIGINS` | — | Extra allowed browser origins, comma-separated |
+| `DHARRAKSHAK_RATE_LIMIT` | `1` | `0` disables the per-client request budgets |
 | `DHARRAKSHAK_API_PROXY` | `http://localhost:8000` | Vite dev proxy target |
 | `VITE_API_MODE` | `mock` | `api` talks to the backend |
 | `VITE_API_BASE` | same origin | Absolute backend origin for builds |
 
-`.env` is git-ignored; `.env.example` documents the keys.
+`.env` is git-ignored; `.env.example` documents every variable above (and the frontend's
+`VITE_*` ones).
 
 ---
 
 ## Appendix: where docs and code differ
 
-These are known drifts between the current documentation and the current source. They are
-recorded here rather than silently "fixed", because the code is out of scope for this document.
+This document tracks drift between the documentation and the source. The code wins; the doc is
+corrected. The six drifts listed here previously have all been **resolved** in the local audit
+(uncommitted) — they are recorded so a future reader knows what was wrong, not because they are
+still true.
 
-| Document | Says | Code does |
-|---|---|---|
-| `docs/MODEL_CARD.md` | Ranking is crop-aware: only the registered crop's classes are ranked | `classifier.classify()` ranks all 38 and only *warns* via `crop_mismatch` |
-| `docs/MODEL_CARD.md` | Uncertain when the within-crop top-2 gap is under 0.30 | `MARGIN_THRESHOLD` is unused; the live check is top-1 `< 0.50` |
-| `backend/ml/classifier.py` header | Leaf crop is off because it did not help | `DEFAULT_STEPS` includes `leaf_crop`, so it is on |
-| `docs/MODEL_CARD.md` | Default model is linkanjarad (60% field top-1) | `DEFAULT_MODEL` is `daksh-mobilenetv2` (45%) |
-| `backend/main.py` `/analyze` docstring | Risk, cards and explanation are still placeholders | `pipeline.py` produces all three for real |
-| `README.md` setup | `python scripts/download_model.py` downloads the weights | The legacy default has no `repo`, so that call cannot succeed; the `.onnx` weights are already committed |
+| Was | Now |
+|---|---|
+| `docs/MODEL_CARD.md` said ranking was crop-aware | The card states all 38 classes are ranked, and labels the 60%/85% figures as crop-restricted measurements the app does not reproduce |
+| `docs/MODEL_CARD.md` described a top-2-gap uncertainty rule | The card lists the real rules (poor photo, or top-1 < 0.50); `MARGIN_THRESHOLD` is gone from the code |
+| `backend/ml/classifier.py` said leaf crop was off | The header now says `DEFAULT_STEPS` enables it, and notes it is accuracy-neutral |
+| `docs/MODEL_CARD.md` called linkanjarad the default | The card documents `daksh-mobilenetv2` (committed ONNX) as the default and explains the trade-off |
+| `backend/main.py` `/analyze` docstring called risk/cards/explanation placeholders | The docstring and module header describe the real pipeline |
+| `README.md` said `download_model.py` downloads the weights | The script now explains that the default has no `repo` and the `.onnx` is committed, and `run_demo.sh` accepts the `.onnx` |
 
-The last row is the one that affects a fresh clone: weights ship in the repository, so nothing
-needs downloading for the app to run.
+### Known drift that remains
+
+| Where | Drift |
+|---|---|
+| `frontend/src/data/banks.js` | The KCC bank-comparison cards and the past-loans timeline are farmer-facing financial data **hardcoded in the frontend**, not served from `shared/content/` like every other piece of content. They are labelled "indicative rates (sample)" in the UI (`indicative_note`) but exist in no `shared/` file and no API response. |
+| `backend/main.py` → `/api/health` | `stage` reports a ROADMAP milestone name (`upgrade-1-field-accuracy`). It is a hand-maintained string with no automated link to the roadmap, so it will drift again unless bumped deliberately. |
+
+Nothing else in this document is known to disagree with the source.

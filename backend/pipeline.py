@@ -29,8 +29,9 @@ from shared.contract import AnalysisResult, CropProfile, Weather
 
 def build_analysis(crop: CropProfile, output: ClassifierOutput, weather: Weather | None) -> AnalysisResult:
     """Combine model output, weather and crop profile into one result."""
-    # The classifier ranks only the registered crop's classes and flags a
-    # mismatch when the photo puts almost no weight on that crop.
+    # The classifier ranks all 38 classes, so the winner may belong to a
+    # different crop than the one the farmer registered. That is reported as a
+    # warning; the predictions themselves are never filtered or re-ranked.
     crop_mismatch = output.crop_mismatch
 
     facts = Facts(
