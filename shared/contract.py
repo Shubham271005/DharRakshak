@@ -34,7 +34,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Languages that MUST be present in every LocalizedText.
 REQUIRED_LANGUAGES: tuple[str, ...] = ("en", "hi")
@@ -162,16 +162,32 @@ class CropProfileCreate(BaseModel):
         None, description="Add the crop to this existing farmer (from CropProfile.farmer_id); omit to create a new farmer"
     )
     preferred_language: str = "en"
-    crop_type: str = Field(..., description="Key from the supported-crops list, e.g. 'tomato'")
-    variety: Optional[str] = None
+    crop_type: str = Field(
+        ..., max_length=50, description="Lower-case crop key, e.g. 'tomato'. May be a crop the image model does not cover."
+    )
+    variety: Optional[str] = Field(None, max_length=100)
     sowing_date: date
     area_acres: float = Field(..., gt=0, le=1000)
-    location_name: str = Field(..., min_length=1)
+    location_name: str = Field(..., min_length=1, max_length=200)
     stage: CropStage
     # Optional exact position (e.g. from the phone's GPS). When given, the
     # backend skips looking up `location_name`. Send both or neither.
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
+
+    @field_validator("preferred_language")
+    @classmethod
+    def _language_is_supported(cls, value: str) -> str:
+        """Reject an unknown language code instead of storing it silently.
+
+        `LocalizedText.in_lang()` degrades an unknown code to English, so a typo
+        used to be saved without complaint and the farmer quietly got English
+        with no explanation. The chat routes already coerce to a supported
+        language; this makes the stored profile do the same.
+        """
+        if value not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"preferred_language must be one of {list(SUPPORTED_LANGUAGES)}")
+        return value
 
     @model_validator(mode="after")
     def _sowing_not_in_future(self) -> "CropProfileCreate":
@@ -366,6 +382,19 @@ class ChatRequest(BaseModel):
         default_factory=list, max_length=20,
         description="Earlier turns, oldest first (the backend uses the last few)",
     )
+
+    @field_validator("message")
+    @classmethod
+    def _message_not_blank(cls, value: str) -> str:
+        """`min_length=1` accepts "   ", which buys an LLM call and asks nothing.
+
+        Surrounding whitespace is trimmed so the model sees the actual question,
+        and a message that is only whitespace is rejected as 422.
+        """
+        text = value.strip()
+        if not text:
+            raise ValueError("message cannot be blank")
+        return text
 
 
 class ChatReply(BaseModel):

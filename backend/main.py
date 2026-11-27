@@ -185,6 +185,18 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB is plenty for a phone photo
 
 
+def _media_type(header: str | None) -> str:
+    """The bare media type from a Content-Type header.
+
+    Clients legitimately append parameters to a valid type: `image/png;
+    charset=binary` from a browser, `audio/webm;codecs=opus` from MediaRecorder.
+    Comparing the raw header rejected those uploads as "not a PNG" even though
+    the bytes were fine, and the two upload endpoints disagreed about it, so the
+    parse now lives here and both use it.
+    """
+    return (header or "").split(";")[0].strip().lower()
+
+
 def _require_crop(crop_id: str) -> CropProfile:
     """Return the crop or stop the request with a 404."""
     crop = repository.get_crop(crop_id)
@@ -317,10 +329,11 @@ async def analyze(
     _rate_limit(request, "analyze")
     crop = _require_crop(crop_id)
 
-    if image.content_type not in ALLOWED_IMAGE_TYPES:
+    media_type = _media_type(image.content_type)
+    if media_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            f"Please upload a JPEG, PNG or WebP photo (got {image.content_type}).",
+            f"Please upload a JPEG, PNG or WebP photo (got {media_type or 'unknown'}).",
         )
     data = await image.read()
     if not data:
@@ -413,7 +426,7 @@ async def transcribe(
     sends the text to /api/chat and reads the reply aloud with the browser's
     built-in voice."""
     _rate_limit(request, "transcribe")
-    content_type = (audio.content_type or "").split(";")[0].strip()
+    content_type = _media_type(audio.content_type)
     if content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"Unsupported audio type: {content_type or 'unknown'}")
     data = await audio.read()

@@ -36,6 +36,8 @@ export class ApiError extends Error {
 // ---------------------------------------------------------------------------
 
 const MOCK_DELAY_MS = 300
+// Longest a single API call may take before it is treated as failed.
+const REQUEST_TIMEOUT_MS = 45000
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 // Return a deep copy so a screen can never accidentally edit the sample data.
 const mockReturn = async (value) => {
@@ -46,8 +48,20 @@ const mockReturn = async (value) => {
 async function request(path, options = {}) {
   let response
   try {
-    response = await fetch(`${API_BASE}/api${path}`, options)
-  } catch {
+    // Every request is bounded. A cold server, a dead mobile connection or a
+    // dropped proxy left the UI on a spinner forever with no error and no way
+    // to retry; 45s is longer than the backend's own slowest call (the 45s
+    // speech-to-text timeout) so it never aborts work that is still progressing.
+    // `AbortSignal.timeout` is missing on older Safari, hence the guard: without
+    // a signal the old behaviour (wait) is better than a TypeError.
+    const timeout = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+      ? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      : undefined
+    response = await fetch(`${API_BASE}/api${path}`, { ...options, signal: options.signal ?? timeout })
+  } catch (err) {
+    if (err?.name === 'TimeoutError' || err?.name === 'AbortError') {
+      throw new ApiError('The server took too long to answer. Please try again.')
+    }
     throw new ApiError('Cannot reach the DharRakshak server. Is the backend running on port 8000?')
   }
   if (!response.ok) {
@@ -62,7 +76,13 @@ async function request(path, options = {}) {
     }
     throw new ApiError(message, response.status)
   }
-  return response.json()
+  try {
+    return await response.json()
+  } catch {
+    // A 200 that is not JSON (a proxy's HTML error page) used to throw a raw
+    // SyntaxError, so callers testing `err.status` got undefined.
+    throw new ApiError('The server sent a response this app could not read.', response.status)
+  }
 }
 
 const postJSON = (path, body) =>

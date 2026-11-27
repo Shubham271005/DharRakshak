@@ -42,7 +42,7 @@ class FakeClassifier:
         top = self.labels[self.top_index]
         uncertain = self.confidence < clf.UNCERTAIN_THRESHOLD
         # Like the real classifier: a photo of another crop = mismatch warning.
-        mismatch = registered_crop is not None and top.crop != registered_crop and not uncertain
+        mismatch = registered_crop is not None and top.crop != registered_crop
         return clf.ClassifierOutput(
             predictions=[
                 Prediction(label=self.labels[i].label, display_name=clf.display_name(self.labels[i]), confidence=c)

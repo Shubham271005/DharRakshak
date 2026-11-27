@@ -417,3 +417,85 @@ The three Phase 2 findings were verified the same way, by running them:
 and keys on the client address, which is the same `"testclient"` for the entire suite, so without
 a reset the budget would run out partway through and later tests would fail with `429` for reasons
 that have nothing to do with what they assert.
+
+---
+
+# Audit 2 — full backend engineering pass
+
+**Baseline on entry:** `893 passed, 1 skipped` (reproduced exactly on Windows with
+Python 3.12.10 and the subset install described in COVEXCODE.md).
+**Baseline on exit:** `929 passed, 1 skipped` — 36 new tests, no existing test weakened.
+
+Every finding below was reproduced with a failing test *before* being fixed, and the
+fix was confirmed by re-running the suite. Severity uses the same table as above.
+
+| # | Finding | Severity | Status |
+|---|---|---|---|
+| 22 | `requirements.txt` lacked `onnxruntime` and `numpy`, so a fresh install could not start the server | **High** | **Fixed** |
+| 23 | `POST /analyze` rejected a valid Content-Type carrying parameters (`image/png; charset=binary`) | **High** | **Fixed** |
+| 24 | One corrupt `sowing_date` row turned `GET /api/crops` into a 500 for every crop | **Medium** | **Fixed** |
+| 25 | `ChatRequest.message` accepted `"   "`, buying an LLM call that asked nothing | **Medium** | **Fixed** |
+| 26 | `location_name`, `variety`, `crop_type` had no `max_length` while `farmer_name` was capped | **Medium** | **Fixed** |
+| 27 | `preferred_language` accepted any string and stored it silently (finding 12, now closed) | **Medium** | **Fixed** |
+| 28 | The frontend rewrote the farmer's stored language to the UI language on every profile save | **High** | **Fixed** |
+| 29 | "Register new crop" was a `type="button"`, so no client-side validation ever ran | **Medium** | **Fixed** |
+| 30 | No request timeout or abort anywhere in the frontend: a dead connection spun forever | **Medium** | **Fixed** |
+| 31 | A failed refresh replaced already-loaded data with `null`, blanking the whole Dashboard | **Medium** | **Fixed** |
+| 32 | An uncleared `setTimeout` in the profile form could set state after unmount | **Low** | **Fixed** |
+| 33 | `conftest.FakeClassifier` suppressed `crop_mismatch` when uncertain; production never did | **Medium** | **Fixed** |
+| 34 | `test_a_weather_outage_does_not_fail_the_analysis` asserted the opposite of its name | **Low** | **Fixed** |
+
+## One recommendation from the first audit was wrong
+
+This pass did close finding 12 by validating `preferred_language` (see 27). But an earlier
+proposal in this session to reject any `crop_type` outside the image model's 14 crops was
+**wrong and was abandoned**: `tests/test_repository.py` and `tests/test_api_integration.py`
+deliberately create crops typed `wheat`, `mustard` and `quinoa`, because a farmer growing
+wheat is a legitimate user whose crop the *classifier* simply cannot diagnose — finance,
+weather and chat still work for them. Validating the crop key would have rejected real
+farmers to protect a model limitation. Only the misleading field description ("Key from the
+supported-crops list") was corrected.
+
+## Finding 23 — why the Content-Type mattered
+
+`transcribe()` already split the header on `;`, but `analyze()` compared it raw:
+
+| Header sent | Before | After |
+|---|---|---|
+| `image/png` | accepted | accepted |
+| `image/png; charset=binary` | **415 rejected** | accepted |
+| `text/plain` | 415 | 415 |
+
+The parse now lives in one `_media_type()` helper used by both upload endpoints, so they
+cannot drift apart again.
+
+## Findings recorded, deliberately not changed
+
+- **No authentication, anywhere.** Unchanged and unchanged *by design* (finding 11). Every
+  endpoint is anonymous and `GET /api/crops` returns every farmer's name, village,
+  coordinates and loan standing. This is the single biggest thing to fix before real use.
+- **The rate limiter runs before validation**, so a client over budget gets `429` instead of
+  `404` for an unknown crop id. Left alone: checking the cheap guard first is the correct
+  order for a DoS control, and a DB lookup for every abusive request would be worse.
+- **`engines/actions.py` has two unreachable cards.** `clean_tools` (weight 75) and
+  `monitor_weather` (60) can never enter the top 3, because two disease steps (90/89) plus
+  `check_local_guidance` (80) always outrank them. Rebalancing weights changes the advice a
+  farmer sees, so that is a product decision, not an audit fix.
+- **`update_crop` leaves seeded `expected_harvest_*` / `yield_*` stale** when the sowing date
+  changes. Only the demo crop has those columns; user-created crops store `NULL`.
+- **Four weak tests remain weak** (test-quality, not product defects):
+  `tests/test_preprocess.py:274` (one parametrised case asserts nothing — its `if` guard is
+  false for the second value), `tests/test_classifier_unit.py:229` (the stub returns the same
+  vector for an image and its mirror, so any averaging passes),
+  `tests/test_repository.py:352` (the seed fixture pre-populates, so the threads return before
+  the race is reached), and `tests/test_api_integration.py:386` (asserts the fake's fixed reply
+  and a static sentence rather than that `CONTEXT>>>` was stripped).
+
+## Verification
+
+| Change | How it was checked | Result |
+|---|---|---|
+| Full suite | `scripts\py.cmd -m pytest -q` | 929 passed, 1 skipped |
+| New regression tests | `pytest tests/test_audit_regressions.py` | 10 passed (6 failed before the fixes) |
+| New coverage tests | `pytest tests/test_audit_coverage.py` | 26 passed |
+| Frontend changes | `npm run build` in `frontend/` | built in 3.59s, 388 kB JS / 118 kB gzip |

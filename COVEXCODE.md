@@ -15,6 +15,36 @@ python3 -m venv .venv
 Baseline after the audit + test phases: **893 passed, 1 skipped**.
 `tests/test_classifier.py` skips because torch is absent — that is expected, not a failure.
 
+### On Windows
+
+There is no `python` on PATH on this machine (only the Microsoft Store stubs in
+`WindowsApps`, which fail immediately), the commands above use POSIX paths, and the
+shell mangles quoted absolute paths because the user directory contains a space.
+Use the wrapper instead — it resolves the interpreter for you and works from the
+repository root:
+
+```bat
+scripts\py.cmd -m venv .venv
+scripts\py.cmd -m pip install pytest pytest-cov fastapi uvicorn python-multipart ^
+  httpx python-dotenv pillow numpy opencv-python-headless pydantic
+scripts\py.cmd -m pytest -q
+```
+
+The venv interpreter lives at `.venv\Scripts\python.exe`, **not** `.venv/bin/python`.
+`scripts\py.cmd` prefers it once it exists, and falls back to the user-level
+Python 3.12 install otherwise. Installing the interpreter itself:
+
+```bat
+winget install --id Python.Python.3.12 --scope user --force
+```
+
+`--force` matters: winget can report "already installed" from a stale registry
+entry while no `python.exe` actually exists anywhere.
+
+One more trap for editors and scripted patches: the tracked source files use
+**CRLF** line endings, while anything you create in a tool that writes `\n` will be
+LF. A multi-line search-and-replace written with LF will silently fail to match.
+
 Frontend has no test suite. Verify JSX changes with:
 
 ```bash

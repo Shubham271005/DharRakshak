@@ -179,7 +179,7 @@ def test_run_analysis_asks_for_the_crops_own_coordinates(monkeypatch):
     assert asked["coords"] == (28.99, 77.02)
 
 
-def test_a_weather_outage_does_not_fail_the_analysis(monkeypatch):
+def test_a_weather_error_that_escapes_get_weather_propagates(monkeypatch):
     def boom(lat, lon):
         raise WeatherUnavailable("down")
 

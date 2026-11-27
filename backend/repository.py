@@ -18,6 +18,8 @@ import logging
 import uuid
 from datetime import date, datetime, timezone
 
+from pydantic import ValidationError
+
 from backend.db import connect
 from backend.engines.content import load
 from backend.sample_store import sample
@@ -67,11 +69,33 @@ _CROP_SELECT = """
 """
 
 
+class UnreadableCrop(RuntimeError):
+    """A stored crops row cannot be turned into a CropProfile.
+
+    Raised by `_row_to_crop` and handled by the readers: a corrupt row is
+    skipped in a list and treated as absent in a single read, so it can never
+    become a 500 for an otherwise healthy request.
+    """
+
+
 def _row_to_crop(row) -> CropProfile:
     """Convert a crops+farmers row into the contract model.
 
     `days_since_sowing` is computed on every read, so it's always current.
+
+    Raises UnreadableCrop when the row cannot be turned into a profile, which
+    means a column holds something the contract cannot represent: a bad
+    `sowing_date`, an unknown `stage`, coordinates out of range. Such a row is
+    only reachable through manual tampering or an older schema version, but the
+    read path must not turn it into a 500 for every other crop on the screen.
     """
+    try:
+        return _build_crop(row)
+    except (ValueError, TypeError, ValidationError) as err:
+        raise UnreadableCrop(f"crop {row['crop_id']!r}: {err}") from err
+
+
+def _build_crop(row) -> CropProfile:
     sowing = date.fromisoformat(row["sowing_date"])
     yield_estimate = None
     if row["yield_min_kg"] is not None and row["yield_max_kg"] is not None:
@@ -97,7 +121,14 @@ def _row_to_crop(row) -> CropProfile:
 def get_crop(crop_id: str) -> CropProfile | None:
     with connect() as conn:
         row = conn.execute(f"{_CROP_SELECT} WHERE c.crop_id = ?", (crop_id,)).fetchone()
-    return _row_to_crop(row) if row else None
+    if row is None:
+        return None
+    try:
+        return _row_to_crop(row)
+    except UnreadableCrop as err:
+        # Treated as "not found": the caller answers 404 rather than 500.
+        log.warning("Skipping unreadable crop row: %s", err)
+        return None
 
 
 class UnknownFarmer(LookupError):
@@ -153,7 +184,13 @@ def list_crops() -> list[CropListItem]:
         }
     items = []
     for row in rows:
-        item = CropListItem(profile=_row_to_crop(row))
+        try:
+            profile = _row_to_crop(row)
+        except UnreadableCrop as err:
+            # One corrupt row must not hide every other crop from the farmer.
+            log.warning("Skipping unreadable crop row in the list: %s", err)
+            continue
+        item = CropListItem(profile=profile)
         s = stats.get(row["crop_id"])
         if s:
             try:

@@ -9,7 +9,7 @@
  *   [ ] Demo prep: register a second crop live, then switch back.
  */
 import { CalendarDays, CloudRain, Droplets, LocateFixed, MapPin, Ruler, Save, Sprout, Thermometer, Wheat } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ApiError, getCropProfile, getCurrentPosition, getWeather, saveCropProfile } from '../api/client.js'
 import { useApiData } from '../api/useApiData.js'
 import { CropList } from '../components/CropPicker.jsx'
@@ -79,6 +79,15 @@ function CropForm({ profile, cropId, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null) // {tone, text}
   const [locating, setLocating] = useState(false)
+  const messageTimer = useRef(null)
+
+  // One timer at a time, cleared on unmount: otherwise an earlier message could
+  // cut a newer one short, or set state after the screen has gone.
+  function dismissSoon() {
+    clearTimeout(messageTimer.current)
+    messageTimer.current = setTimeout(() => setMessage(null), 3000)
+  }
+  useEffect(() => () => clearTimeout(messageTimer.current), [])
 
   useEffect(() => setForm(toForm(profile)), [profile])
   const set = (field) => (e) =>
@@ -87,7 +96,8 @@ function CropForm({ profile, cropId, onSaved }) {
   async function useMyLocation() {
     setLocating(true)
     try {
-      setForm({ ...form, ...(await getCurrentPosition()) })
+      const position = await getCurrentPosition()
+      setForm((f) => ({ ...f, ...position }))
       setMessage({ tone: 'tint', text: t('location_captured') })
     } catch (err) {
       setMessage({ tone: 'rust', text: `${t('location_failed')} ${err.message}` })
@@ -104,7 +114,10 @@ function CropForm({ profile, cropId, onSaved }) {
     setSaving(true)
     setMessage(null)
     try {
-      const body = { ...form, area_acres: Number(form.area_acres), preferred_language: lang }
+      // Keep the language already stored on the farmer. The UI language is a
+      // display choice only; sending `lang` here rewrote a Hindi profile to
+      // English the first time anyone pressed Save with an English interface.
+      const body = { ...form, area_acres: Number(form.area_acres), preferred_language: profile.preferred_language ?? lang }
       // A new crop belongs to the same farmer (so it shows up in their crops and loan).
       if (asNew && profile.farmer_id) body.farmer_id = profile.farmer_id
       if (body.latitude == null) {
@@ -114,7 +127,7 @@ function CropForm({ profile, cropId, onSaved }) {
       const saved = await saveCropProfile(body, asNew ? null : cropId)
       onSaved(saved)
       setMessage({ tone: 'tint', text: asNew ? t('registered') : t('saved') })
-      setTimeout(() => setMessage(null), 3000)
+      dismissSoon()
     } catch (err) {
       setMessage({ tone: 'rust', text: err instanceof ApiError ? err.message : String(err) })
     } finally {
@@ -124,9 +137,19 @@ function CropForm({ profile, cropId, onSaved }) {
 
   return (
     <Card title={t('edit_crop')} icon={Save}>
-      <form onSubmit={(e) => { e.preventDefault(); save(false) }} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          // Both buttons are real submits, so the browser's own validation
+          // (required / min / max / type) runs for "Register new" too. It used to
+          // be a plain type="button", which skipped validation entirely and sent
+          // an empty area (Number('') === 0) and future sowing dates to the API.
+          save(e.nativeEvent.submitter?.value === 'new')
+        }}
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <Field label={t('farmer_name')}>
-          <input className={INPUT_CLASS} value={form.farmer_name} onChange={set('farmer_name')} required />
+          <input className={INPUT_CLASS} value={form.farmer_name} onChange={set('farmer_name')} maxLength={100} required />
         </Field>
         <Field label={t('crop')}>
           <select className={INPUT_CLASS} value={form.crop_type} onChange={set('crop_type')}>
@@ -142,15 +165,15 @@ function CropForm({ profile, cropId, onSaved }) {
           <input type="date" className={INPUT_CLASS} value={form.sowing_date} max={todayISO()} onChange={set('sowing_date')} required />
         </Field>
         <Field label={t('area_acres')}>
-          <input type="number" min="0.1" step="0.1" className={INPUT_CLASS} value={form.area_acres} onChange={set('area_acres')} required />
+          <input type="number" min="0.1" max="1000" step="0.1" className={INPUT_CLASS} value={form.area_acres} onChange={set('area_acres')} required />
         </Field>
         <Field label={t('variety')} hint={t('variety_hint')}>
-          <input className={INPUT_CLASS} value={form.variety} onChange={set('variety')} />
+          <input className={INPUT_CLASS} value={form.variety} onChange={set('variety')} maxLength={100} />
         </Field>
         <div className="sm:col-span-2 lg:col-span-3">
           <Field label={t('village_district')} hint={form.latitude != null ? `📍 ${form.latitude}, ${form.longitude}` : t('village_hint')}>
             <div className="flex gap-2">
-              <input className={INPUT_CLASS} value={form.location_name} onChange={set('location_name')} required />
+              <input className={INPUT_CLASS} value={form.location_name} onChange={set('location_name')} maxLength={200} required />
               <Button variant="secondary" icon={LocateFixed} onClick={useMyLocation} disabled={locating} className="shrink-0">
                 <span className="hidden sm:inline">{locating ? '…' : t('use_my_location')}</span>
               </Button>
@@ -159,8 +182,8 @@ function CropForm({ profile, cropId, onSaved }) {
         </div>
         {message && <Notice tone={message.tone} className="sm:col-span-2 lg:col-span-3">{message.text}</Notice>}
         <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
-          <Button type="submit" icon={Save} disabled={saving}>{saving ? t('saving') : t('save_changes')}</Button>
-          <Button variant="secondary" onClick={() => save(true)} disabled={saving}>{t('register_new')}</Button>
+          <Button type="submit" value="save" icon={Save} disabled={saving}>{saving ? t('saving') : t('save_changes')}</Button>
+          <Button type="submit" value="new" variant="secondary" disabled={saving}>{t('register_new')}</Button>
         </div>
       </form>
     </Card>

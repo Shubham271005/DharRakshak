@@ -19,7 +19,7 @@ export function useApiData(loader, deps = []) {
     setState((s) => ({ ...s, loading: true, error: null }))
     loader()
       .then((data) => !cancelled && setState({ data, loading: false, error: null }))
-      .catch((error) => !cancelled && setState({ data: null, loading: false, error }))
+      .catch((error) => !cancelled && setState((s) => ({ data: s.data, loading: false, error })))
     return () => {
       cancelled = true
     }

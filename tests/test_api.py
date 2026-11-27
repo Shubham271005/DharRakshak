@@ -200,7 +200,7 @@ def test_low_confidence_is_uncertain(client, fake_model):
     body = upload(client).json()
     assert body["uncertain"] is True
     assert "retake" in body["uncertainty_message"]["en"]
-    assert body["crop_mismatch"] is False  # not flagged when already uncertain
+    assert body["crop_mismatch"] is False  # the photo's crop matches the profile, so no warning
 
 
 def test_photo_of_other_crop_is_flagged(client, fake_model):
